@@ -37,9 +37,12 @@ Collect before touching anything:
 4. `LICENSE` + manifest license field, agreeing with each other.
 5. Process furniture from `templates/`: `CLAUDE.md` (from
    `CLAUDE.template.md`, placeholders filled), `docs/IMPLEMENTATION.md`
-   (from the skeleton), `docs/HANDOVER.md`, `docs/handovers/`,
-   `docs/adr/`, task/PR/handover templates. Trim anything inapplicable —
-   the process policy is the invariant, the file layout is convention.
+   (from the skeleton), `docs/HANDOVER.md`, and the full documentation
+   layout from [documentation.md](policies/documentation.md)
+   (`docs/handovers/`, `docs/adr/`, `docs/guide/`, `docs/dev/`,
+   `docs/architecture.md` stub), plus task/PR/handover/ADR templates.
+   Trim anything inapplicable — the policies are the invariant, the file
+   layout is convention.
 
 ## Phase 2 — Gates, in dependency order
 

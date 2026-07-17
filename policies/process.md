@@ -12,8 +12,9 @@
   progress, blocked, recently completed, open decisions
   (`templates/IMPLEMENTATION.skeleton.md`).
 - `docs/HANDOVER.md` (~100-line budget) + `docs/handovers/` archive.
-- `docs/adr/` for decision records; a risk register once risks exist.
-- Task/PR/handover templates from `templates/`.
+- The full documentation layout and capture streams —
+  [documentation.md](documentation.md).
+- Task/PR/handover/ADR templates from `templates/`.
 
 ## Session onboarding (every session)
 
@@ -81,11 +82,9 @@ escalate model class for domain core, adapter boundaries, and releases.
 - [ ] Full-graph gates clean at repo root (lint, typecheck, build, test)
 - [ ] Coverage floor met on new code
 - [ ] **Documentation delta recorded — or an explicit "no docs delta" with
-      a one-line reason.** Streams: package/module README current on
-      surface change · public exports carry doc comments · user-facing
-      changes reflected in the guide · first-of-a-pattern gets a dev
-      recipe · architectural decisions get an ADR. The forced conscious
-      decision is what makes docs accumulate; a soft reminder does not.
+      a one-line reason.** Streams, homes, and the normative definition:
+      [documentation.md](documentation.md). The forced conscious decision
+      is what makes docs accumulate; a soft reminder does not.
 - [ ] Independent review evidence on the PR (tier per diff risk)
 - [ ] PR opened from the template, task ID linked
 - [ ] Tracker updated; handover rewritten for the next picker

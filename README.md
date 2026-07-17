@@ -33,6 +33,7 @@ project is considered protected.
 | `policies/license-conformity.md` | SPDX allowlist, named exceptions, notices, copyleft boundary, supply-chain intake                                                          |
 | `policies/identity-protection.md` | Pseudonymous identity: declared, gate-verified, leak-scanned                                                                              |
 | `policies/process.md`       | Agentic execution: onboarding, context budget, review tiers, handover rotation                                                                  |
+| `policies/documentation.md` | Documentation structure: capture streams, homes, triggers, per-task delta, doc-comment-first reference                                          |
 | `reference/node-pnpm/`      | Argus's real hooks, CI, and scripts — a worked example, not a copy source                                                                       |
 | `templates/`                | Genericized starting files: CLAUDE.md, tracker, handover/task/PR templates, go-public checklist, local gitleaks patterns example                 |
 | `skill/bootstrap-assurance/` | Canonical copy of the Claude Code skill that drives BOOTSTRAP.md (installed at `~/.claude/skills/bootstrap-assurance/`)                        |

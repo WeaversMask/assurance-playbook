@@ -14,7 +14,7 @@ copy source).
 ## Procedure
 
 1. Read `~/assurance-playbook/README.md`, then `BOOTSTRAP.md`, then the
-   five files in `policies/`. BOOTSTRAP.md is the installation order —
+   six files in `policies/`. BOOTSTRAP.md is the installation order —
    follow it phase by phase in the **target project's repo**.
 2. **Phase 0 first, always:** collect the maintainer inputs (stack,
    identity decision, license/allowlist, coverage floors) via questions
