@@ -10,6 +10,14 @@
 
 ## Phase 0 — Maintainer inputs (STOP and ask; do not guess)
 
+> If the maintainer supplies a project plan written from
+> `templates/PROJECT-PLAN.template.md`, most of these inputs are already
+> answered (stack in its header, dependencies/licenses in §4, coverage in
+> §9, identity in §10) — **verify against the plan rather than re-ask**,
+> and let its shred map (§14) drive what Phase 1's furniture is seeded
+> with. Only genuinely missing or ambiguous items go back to the
+> maintainer.
+
 Collect before touching anything:
 
 1. **Project name** and short description.

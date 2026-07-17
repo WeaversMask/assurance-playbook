@@ -28,6 +28,9 @@ docs/
   guide/              user-facing how-to docs
   dev/                contributor recipes, one per repeatable pattern
   risks.md            risk register (create when the first risk appears)
+  plan/               process/documentation/quality-gates policies (installed
+                      at bootstrap), phases/ (one doc per phase), and
+                      archive/ (the shredded PROJECT-PLAN, immutable)
 ```
 
 Modules/packages carry their own `README.md`

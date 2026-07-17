@@ -35,16 +35,18 @@ project is considered protected.
 | `policies/process.md`       | Agentic execution: onboarding, context budget, review tiers, handover rotation                                                                  |
 | `policies/documentation.md` | Documentation structure: capture streams, homes, triggers, per-task delta, doc-comment-first reference                                          |
 | `reference/node-pnpm/`      | Argus's real hooks, CI, and scripts — a worked example, not a copy source                                                                       |
-| `templates/`                | Genericized starting files: CLAUDE.md, tracker, handover/task/PR templates, go-public checklist, local gitleaks patterns example                 |
+| `templates/`                | Genericized starting files: project-plan template, CLAUDE.md, tracker, handover/task/PR/ADR templates, go-public checklist, local gitleaks patterns example |
 | `skill/bootstrap-assurance/` | Canonical copy of the Claude Code skill that drives BOOTSTRAP.md (installed at `~/.claude/skills/bootstrap-assurance/`)                        |
 
 ## Using it
 
-**Human quick start:** create the new project repo (fresh `git init` — never a
-fork of a private repo), then in a Claude Code session inside that repo run
-`/bootstrap-assurance`. The skill walks BOOTSTRAP.md end to end and stops at
-the steps only you can do (identity decision, local patterns file, remote
-creation).
+**Human quick start:** optionally write the up-front design first from
+`templates/PROJECT-PLAN.template.md` (it pre-answers most bootstrap
+questions and shreds into the repo's docs). Then create the new project
+repo (fresh `git init` — never a fork of a private repo) and in a Claude
+Code session inside it run `/bootstrap-assurance`. The skill walks
+BOOTSTRAP.md end to end and stops at the steps only you can do (identity
+decision, local patterns file, remote creation).
 
 **Manual:** follow [BOOTSTRAP.md](BOOTSTRAP.md) yourself; it is written to be
 executable by either a human or an agent.
