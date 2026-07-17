@@ -13,6 +13,17 @@ copy source).
 
 ## Procedure
 
+0. **Plan first, if there is no plan.** If the target directory is empty
+   or has no `PROJECT-PLAN.md`, offer to draft one together from
+   `~/assurance-playbook/templates/PROJECT-PLAN.template.md` before any
+   bootstrapping: interview the maintainer section by section, honor the
+   template's writing rules and per-section contracts (license-check §4
+   choices against `policies/license-conformity.md` while drafting, keep
+   §11 tasks session-sized), and write it as `PROJECT-PLAN.md` in the
+   project directory (no git needed yet — Phase 1 inits and commits it).
+   Proceed to bootstrap only when the maintainer marks it **Agreed** or
+   explicitly chooses to skip the plan. Shredding (§14) happens after
+   bootstrap, as its own docs PR.
 1. Read `~/assurance-playbook/README.md`, then `BOOTSTRAP.md`, then the
    six files in `policies/`. BOOTSTRAP.md is the installation order —
    follow it phase by phase in the **target project's repo**.
