@@ -1,0 +1,412 @@
+# Argus CI — lint, format, typecheck, test, build, commit-message validation,
+# secret scanning. Job names are referenced by branch-protection rules — do not
+# rename without coordinating the admin change in the same PR.
+#
+# Every third-party action is pinned to a full commit SHA (P0-13, ADR-0003):
+# mutable tags are a supply-chain channel. Dependabot's github-actions
+# ecosystem keeps the pins fresh — a bump is a new SHA plus its version
+# comment, never a floating tag.
+
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+    # Default types + ready_for_review (OPS-04): the review-gate job passes
+    # trivially on drafts, so the draft → ready transition must re-run CI —
+    # without this type a draft's green check would survive into the ready PR
+    # on the same SHA (stale-green bypass of the review gate).
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [main]
+  # Weekly re-audit (P0-07): advisories disclosed between PRs still surface,
+  # since pinned versions never re-resolve on their own. The schedule re-runs
+  # the whole workflow — deliberate: it doubles as a weekly green canary on
+  # main, and the commitlint job already skips non-PR events.
+  schedule:
+    - cron: "0 12 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# Turbo remote cache. TURBO_TOKEN / TURBO_TEAM are populated from repo secrets
+# once an admin picks a provider (Open Decision D-1 in docs/IMPLEMENTATION.md).
+# Until then they resolve to empty strings and Turbo silently skips remote
+# cache — the local actions/cache@v4 entries below cover the warm-cache case.
+env:
+  # Concrete Node pin (P0-13): `node-version-file: package.json` resolved the
+  # floating engines range (>=22.22.1) to the newest satisfying release, so CI
+  # could silently jump majors. Bump this deliberately; keep it satisfying the
+  # engines.node floor in package.json.
+  NODE_VERSION: "22.23.1"
+  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+  TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
+  TURBO_REMOTE_CACHE_SIGNATURE_KEY: ${{ secrets.TURBO_REMOTE_CACHE_SIGNATURE_KEY }}
+  # Speed: every job sets these once. The repo-local gitleaks binary is only
+  # needed by the pre-commit hook on developer machines.
+  ARGUS_SKIP_GITLEAKS_INSTALL: "1"
+  HUSKY: "0"
+
+jobs:
+  lint:
+    name: Lint + format
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: ESLint
+        run: pnpm lint
+
+      - name: Prettier (check)
+        run: pnpm format:check
+
+  typecheck:
+    name: Typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Restore Turbo cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: .turbo
+          key: turbo-${{ runner.os }}-typecheck-${{ github.sha }}
+          restore-keys: |
+            turbo-${{ runner.os }}-typecheck-
+
+      - name: Typecheck (turbo)
+        run: pnpm typecheck
+
+  test:
+    name: Test + coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Restore Turbo cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: .turbo
+          key: turbo-${{ runner.os }}-test-${{ github.sha }}
+          restore-keys: |
+            turbo-${{ runner.os }}-test-
+
+      # Aggregated run via root vitest.config.ts — one coverage report covering
+      # every workspace project. `pnpm test:packages` (Turbo per-package) is
+      # kept as a local-dev affordance but is not invoked here.
+      - name: Vitest (aggregated coverage)
+        run: pnpm test
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: coverage-${{ github.run_id }}
+          path: coverage/
+          if-no-files-found: warn
+          retention-days: 14
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Restore Turbo cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: .turbo
+          key: turbo-${{ runner.os }}-build-${{ github.sha }}
+          restore-keys: |
+            turbo-${{ runner.os }}-build-
+
+      - name: Build (turbo)
+        run: pnpm build
+
+  # Stopgap public-advisory audit (P0-07). Catches the registry-indexed CVE
+  # subset of supply-chain risk; explicitly NOT the comprehensive P11-02 audit
+  # (typosquats, install-script/behavioural analysis, licensing) — replace or
+  # fold into that when it ships, not before. Not a branch-protection required
+  # check (same pending admin step as the other jobs, since P0-03).
+  audit:
+    name: Dependency audit (pnpm)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # --audit-level is the exit threshold on pnpm 11 (verified 2026-07-03:
+      # high advisories → exit 1 at "high", exit 0 at "critical"): fails on
+      # high/critical only, moderate-and-below surface in the log without
+      # blocking (transitive dev-dep churn would otherwise be pure noise).
+      - name: pnpm audit (fail on high/critical)
+        run: pnpm audit --audit-level=high
+
+  # License-compliance gate (P0-12, ADR-0002 §G): SPDX allowlist over the full
+  # third-party tree via scripts/check-licenses.mjs. Dev-tooling self-audit —
+  # distinct from the planned P4-06 license-checker product adapter; P11-02's
+  # comprehensive audit may later supersede it. Runs on the same trigger set as
+  # audit (incl. the weekly cron — advisory-style license changes arrive with
+  # version bumps, so re-checking pinned trees weekly is cheap insurance).
+  # Not a branch-protection required check (same pending admin step, P0-03).
+  license:
+    name: License compliance (SPDX allowlist)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check dependency licenses (ADR-0002 §G allowlist)
+        run: pnpm license-check
+
+  commitlint:
+    name: Commit message validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          fetch-depth: 0
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate PR commit messages
+        run: |
+          pnpm exec commitlint \
+            --from "${{ github.event.pull_request.base.sha }}" \
+            --to   "${{ github.event.pull_request.head.sha }}" \
+            --verbose
+
+  # Independent-review gate (OPS-04): makes the protocol's mandatory review
+  # pass mechanical, now that status checks are required. Fails a PR unless it
+  # carries evidence of the review — an "## Independent review packet" comment
+  # (full tier) or an "## Independent review" block in the description (light
+  # tier, docs/config-only diffs). Dumb by design: it checks for the marker,
+  # not the review's quality — the required artifact is the forcing function
+  # (the P1-02 review was skipped until the maintainer asked; prose gates fail
+  # under momentum). No repo checkout, one API call. Not a branch-protection
+  # required check until the maintainer adds it (admin step, same bucket as the
+  # other jobs since P0-03).
+  review-gate:
+    name: Independent review pass
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: github.event_name == 'pull_request'
+    # issues:read alongside pull-requests:read (review finding): the comments
+    # call below is the Issues API (PR conversation comments live there); the
+    # fine-grained permission docs list the endpoint under both categories, so
+    # grant both — if pull-requests:read alone were insufficient, every
+    # full-tier PR would 403 and the fail-closed script would block it.
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
+    steps:
+      - name: Require evidence of the independent review pass
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # PR-author-controlled text — pass via env and read from env; never
+          # interpolate ${{ github.event.* }} into the script body (Actions
+          # script-injection hardening).
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_DRAFT: ${{ github.event.pull_request.draft }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -eu
+
+          # Canonical marker (protocol §Task Completion Checklist). Full-tier
+          # packets post "## Independent review packet" as a PR comment;
+          # light-tier diffs carry an "## Independent review" block in the
+          # description. Both share the "## Independent review" heading stem,
+          # at any heading level. Deliberately no trailing word boundary — it
+          # must also match "...review packet"; the accepted tradeoff is that
+          # an unrelated heading extending the stem (e.g. "## Independent
+          # reviewer duties") would also pass. Dumb-and-fast beats clever here.
+          marker='^#{1,6}[[:space:]]+Independent[[:space:]]+review'
+
+          # Drafts are WIP — the review pass runs at completion.
+          if [ "${PR_DRAFT}" = "true" ]; then
+            echo "Draft PR — review pass deferred until ready. Passing."
+            exit 0
+          fi
+
+          # Bot-authored dependency/release PRs (Dependabot, the changesets
+          # Version PR) are maintainer-reviewed directly at merge and never go
+          # through the agent review-packet flow — don't deadlock them. Quoted
+          # case patterns match the literal "[bot]" login (no glob).
+          case "${PR_AUTHOR}" in
+            'dependabot[bot]' | 'github-actions[bot]' | 'dependabot-preview[bot]')
+              echo "Bot author ${PR_AUTHOR} — review gate not applicable. Passing."
+              exit 0
+              ;;
+          esac
+
+          if printf '%s' "${PR_BODY:-}" | grep -qiE "${marker}"; then
+            echo "Review summary found in the PR description. Passing."
+            exit 0
+          fi
+
+          # One API call: the PR's conversation comments (review packets post
+          # here). Fails closed if the call errors — set -e aborts the job on a
+          # non-zero substitution, matching the pre-push gate's fail-closed
+          # posture (OPS-03).
+          comments="$(gh api --paginate "repos/${REPO}/issues/${PR_NUMBER}/comments" --jq '.[].body')"
+          if printf '%s' "${comments}" | grep -qiE "${marker}"; then
+            echo "Independent review packet comment found. Passing."
+            exit 0
+          fi
+
+          echo "::error title=Independent review pass missing::No review evidence on this PR. Post an '## Independent review packet' comment (full tier) or add an '## Independent review' block to the description (light tier), then RE-RUN this job — comments and description edits do not re-trigger CI. See docs/plan/protocols/agentic-execution.md and docs/plan/protocols/quality-gates.md."
+          exit 1
+
+  secret-scan:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # gitleaks-action calls GET /repos/{owner}/{repo}/pulls/{n}/commits to
+    # enumerate the PR's commits, which the default contents:read scope does
+    # not grant. Add pull-requests:read here so the rest of the workflow
+    # stays on least-privilege.
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          # Full history so gitleaks can scan every commit in a PR (and the
+          # full repo history on push-to-main).
+          fetch-depth: 0
+
+      - name: Gitleaks
+        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
+        env:
+          # Required by gitleaks-action v2+ to fetch the PR diff via the
+          # GitHub API. The default GITHUB_TOKEN has read-only contents
+          # scope, which is all the action needs.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Use repo-committed config (.gitleaks.toml) including the fixture
+          # allowlist. The action picks it up automatically.
+          GITLEAKS_CONFIG: .gitleaks.toml
+
+  # Architecture boundary enforcement (OPS-04, argus-oss#15 item 2): the
+  # dependency-cruiser rules in .dependency-cruiser.cjs make the package
+  # contracts mechanical — core/src imports nothing but neverthrow (no Node
+  # builtins), cross-package imports land only on public entry points, the
+  # testing→core edge stays one-way and type-only in src. Convention-and-
+  # review enforcement becomes CI; Phase-2 dogfooding will reinforce, not
+  # replace, this job. Not a branch-protection required check until the
+  # maintainer adds it (same admin bucket as the other jobs, P0-03).
+  boundaries:
+    name: Architecture boundaries (dependency-cruiser)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check architecture boundaries (dependency-cruiser)
+        run: pnpm boundaries

@@ -1,0 +1,42 @@
+# .gitleaks.local.toml — per-machine personal-identifier patterns
+#
+# ── NEVER COMMIT THE REAL VERSION OF THIS FILE ──────────────────────────────
+# These rules contain the identifiers being protected: committing them into
+# a repo that ever becomes public would disclose exactly what they guard.
+# The real file:
+#   * is created BY THE MAINTAINER, by hand, on each machine — never by an
+#     agent, and its contents are never pasted into a chat/session;
+#   * lives at the repo root as `.gitleaks.local.toml`, which every
+#     project's .gitignore must list (BOOTSTRAP.md Phase 1);
+#   * is passed to gitleaks as an additional config layer by the hooks when
+#     present (hooks run gitleaks once per config; both must pass).
+#
+# This example ships only placeholders.
+
+title = "Local personal-identifier rules (example — placeholders only)"
+
+[extend]
+# Extend the repo's committed config so the fixture allowlists still apply.
+path = ".gitleaks.toml"
+
+[[rules]]
+id = "personal-email"
+description = "Maintainer's personal email must never appear in content"
+# Replace with your real address(es), escaped for regex:
+regex = '''your\.personal\.address@personal-domain\.example'''
+
+[[rules]]
+id = "personal-email-domain"
+description = "Any address at the personal domain"
+regex = '''[A-Za-z0-9._%+-]+@personal-domain\.example'''
+
+[[rules]]
+id = "home-directory-path"
+description = "Home-directory paths leak the local username"
+# Replace <username> with your actual local username(s):
+regex = '''(/Users/<username>|/home/<username>|C:\\Users\\<username>)'''
+
+[[rules]]
+id = "real-name"
+description = "Maintainer's legal name (if it must stay out of content)"
+regex = '''(?i)Firstname\s+Lastname'''

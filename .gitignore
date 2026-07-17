@@ -1,0 +1,4 @@
+# Per-machine personal-identifier patterns — never committed, even here.
+.gitleaks.local.toml
+
+.DS_Store
