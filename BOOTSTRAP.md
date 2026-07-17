@@ -43,6 +43,16 @@ Collect before touching anything:
    `docs/architecture.md` stub), plus task/PR/handover/ADR templates.
    Trim anything inapplicable — the policies are the invariant, the file
    layout is convention.
+6. **Install the day-to-day policies into the repo** so sessions there
+   never depend on this playbook being present: copy
+   `policies/process.md` → `docs/plan/process.md`,
+   `policies/documentation.md` → `docs/plan/documentation.md`, and
+   `policies/quality-gates.md` → `docs/plan/quality-gates.md`, each
+   trimmed to the target stack (drop the stack-mapping tables, keep the
+   invariants). The templates and `CLAUDE.md` reference these
+   `docs/plan/` paths. The other three policies (secret, license,
+   identity) are installation-time guides — their product is the gates
+   themselves; they stay in the playbook.
 
 ## Phase 2 — Gates, in dependency order
 

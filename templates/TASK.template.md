@@ -29,7 +29,7 @@ Ordered list of steps. Be concrete. Revise as you learn.
 2. Design <thing>
 3. Write tests against fixtures first (TDD)
 4. Implement
-5. Run dogfooding scan; ensure no regressions
+5. Run self-scan / ratchet gates (if the project dogfoods itself); ensure no regressions
 6. Update IMPLEMENTATION.md
 7. Write handover
 

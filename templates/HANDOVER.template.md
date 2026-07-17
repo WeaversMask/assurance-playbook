@@ -50,7 +50,7 @@ PRs merged in this session:
 - ✅ Coverage: X.X% line / X.X% branch
 - ✅ CI: green/red on main
 - ⚠️ Lint: X warnings — explain if intentional
-- ✅ Dogfooding scan of self: X errors / Y warnings / Z info
+- ✅ Self-scan (if the project dogfoods itself): X errors / Y warnings / Z info
 
 ---
 

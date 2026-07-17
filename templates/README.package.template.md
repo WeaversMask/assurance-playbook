@@ -1,7 +1,7 @@
 <!--
   Package README template. Copy to packages/<pkg>/README.md (or apps/<app>/README.md)
   when the package is created; keep it current when its public surface changes.
-  See docs/plan/03-documentation.md for when/why. Keep it tight — a page, not a manual.
+  See docs/plan/documentation.md for when/why. Keep it tight — a page, not a manual.
   Replace every italicised prompt below, then delete this comment.
 -->
 
@@ -15,11 +15,11 @@ _2–4 sentences. What problem this package owns, and — just as important — 
 
 ## Public surface
 
-_What consumers import from this package. Keep in sync with_ `src/index.ts`.
+_What consumers import from this package. Keep in sync with the package's entry point._
 
-| Export         | Kind                    | Summary                                             |
-| -------------- | ----------------------- | --------------------------------------------------- |
-| `exportedName` | function / type / class | _one line — full detail lives in its TSDoc comment_ |
+| Export         | Kind                    | Summary                                           |
+| -------------- | ----------------------- | ------------------------------------------------- |
+| `exportedName` | function / type / class | _one line — full detail lives in its doc comment_ |
 
 _If the package exposes subpath exports (e.g._ `@{{SCOPE}}/PACKAGE-NAME/config`_), list them and what each is for._
 
@@ -27,7 +27,7 @@ _If the package exposes subpath exports (e.g._ `@{{SCOPE}}/PACKAGE-NAME/config`_
 
 - **Depends on:** _internal packages + notable external deps, or "nothing (leaf)"_
 - **Consumed by:** _who imports this, or "tests only"_
-- **Boundary rules:** _any forbidden-import / layering constraint from 01-repo-structure.md that applies here_
+- **Boundary rules:** _any forbidden-import / layering constraint from the architecture doc that applies here_
 
 ## Usage
 
