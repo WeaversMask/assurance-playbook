@@ -25,9 +25,11 @@
      after any auto-formatting has run).
    - **Pre-push** — scans the exact range the push would publish
      (`remote-sha..local-sha`; conservative fallback when the remote SHA
-     doesn't resolve locally). This catches `SKIP`-ed commits and history
-     rewritten after the staged scan (rebase, amend). Nothing unscanned
-     leaves the machine.
+     doesn't resolve locally). Plenty of commits never pass through the
+     staged scan: history rewritten after it (rebase, amend), conflict
+     resolutions written during a merge or rebase, cherry-picks, and
+     anything authored in a clone where the hooks were not installed.
+     Nothing unscanned leaves the machine.
    - **CI** — scans **full repository history** on every PR and push to the
      default branch. This layer can never be skipped.
 2. **Fail closed on operational errors.** A scan that never ran must not
@@ -35,9 +37,23 @@
    underlying git invocation errors → block. (Argus finding: gitleaks exits
    0 when its internal `git log` fails — the hook must detect and block
    that itself.)
-3. **Skips are scoped and justified.** `SKIP=<scanner>` on one commit/push
-   with written justification in the commit message (commit) or PR
-   description (push). Never a blanket hook bypass.
+3. **The secret scan has no bypass.** Other gates (lint, format) may offer
+   a scoped, justified `SKIP=<gate>` for one commit; the scanner never
+   does, at any layer, and `--no-verify` is banned outright. A per-commit
+   escape hatch is indistinguishable from no scan at all on the one commit
+   that needed it most — and where the hooks also gate the
+   personal-identifier config (identity-protection.md invariant 5a), a
+   single flag disarms the secret layer and the identity layer together.
+
+   The hooks **reject** the retired flag rather than ignoring it: someone
+   who types `SKIP=gitleaks` believes the scan was skipped, so failing
+   loudly beats silently scanning anyway.
+
+   A string that must legitimately be committed gets a **scoped allowlist
+   entry in the committed config** — reviewable, permanent, and visible to
+   everyone — instead of a bypass whose only trace is a commit message.
+   The cost is real and accepted: a broken or missing scanner blocks all
+   commits and pushes until it is fixed. That is the gate working.
 4. **Scanner versions are pinned** — the local binary via an install script
    with a pinned version, CI via a pinned action/version — and bumped
    together in the same PR.

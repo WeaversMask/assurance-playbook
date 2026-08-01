@@ -2,14 +2,18 @@
 # Argus pre-push hook
 #
 # Second-layer secret scan: gitleaks over every commit that is about to
-# leave the machine. Pre-commit scans staged content, but a SKIP=gitleaks
-# commit or history rewritten after the fact (rebase, amend) can slip past
-# it — this hook closes that gap by scanning the exact outgoing range per
-# pushed ref, so nothing unscanned lands on the remote.
+# leave the machine. Pre-commit scans staged content, but plenty of commits
+# never pass through it — history rewritten after the staged scan (rebase,
+# amend), conflict resolutions written during a merge or rebase, cherry-
+# picks, and anything authored in a clone where the hooks were not
+# installed. This hook closes that gap by scanning the exact outgoing range
+# per pushed ref, so nothing unscanned lands on the remote.
 #
-# Bypass (requires written justification in the PR — see
-# docs/SECURITY-NOTES.md §SKIP policy):
-#   SKIP=gitleaks git push ...
+# THERE IS NO BYPASS. SKIP=gitleaks is deliberately not supported here or
+# in pre-commit (secret-scanning.md invariant 3): this is the last layer
+# that runs before content leaves the machine, and a secret is compromised
+# the moment it is pushed. A string that must legitimately be pushed gets a
+# reviewed allowlist entry in .gitleaks.toml, not an invisible bypass.
 #
 # stdin (from git): one line per ref being pushed —
 #   <local-ref> <local-sha> <remote-ref> <remote-sha>
@@ -19,8 +23,11 @@ set -e
 skip_normalized=$(printf '%s' "${SKIP:-}" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')
 case ",${skip_normalized}," in
   *",gitleaks,"*)
-    echo "⚠️  pre-push: SKIP=gitleaks — bypassing outgoing-range secret scan. Document the reason in the PR."
-    exit 0
+    echo "❌ pre-push: SKIP=gitleaks is not supported — the outgoing-range secret scan cannot be skipped."
+    echo "   If a secret-shaped string must legitimately be pushed, add a scoped"
+    echo "   allowlist entry to .gitleaks.toml so the exception is reviewable,"
+    echo "   instead of invisible in a PR description. See docs/SECURITY-NOTES.md."
+    exit 1
     ;;
 esac
 
@@ -35,7 +42,15 @@ else
   echo "❌ pre-push: gitleaks not found."
   echo "   Run: ./scripts/install-gitleaks.sh"
   echo "   Or install system-wide (brew install gitleaks) and retry."
-  echo "   To bypass once (requires justification): SKIP=gitleaks git push ..."
+  echo "   There is no bypass — the scan must run before anything leaves the machine."
+  exit 1
+fi
+
+# The committed config is read by the check below and passed to every scan,
+# so name it explicitly when it is the thing that is missing.
+if [ ! -f "$repo_root/.gitleaks.toml" ]; then
+  echo "❌ pre-push: .gitleaks.toml is missing — the repo's committed scanner config."
+  echo "   The outgoing-range scan cannot run without it. Restore it before pushing."
   exit 1
 fi
 
@@ -105,7 +120,8 @@ while read -r local_ref local_sha _remote_ref remote_sha; do
       echo "❌ pre-push: gitleaks reported an internal error — the scan did not complete; failing closed."
       echo "   Config: $(basename "$config")"
       echo "   Nothing was pushed — git aborts every ref in this push together."
-      echo "   Fix the underlying git/gitleaks problem, or bypass once with justification: SKIP=gitleaks git push ..."
+      echo "   There is no bypass: fix the underlying git/gitleaks problem and retry."
+      echo "   A broken scanner blocks pushes by design — that is the gate working."
       exit 1
     fi
   done

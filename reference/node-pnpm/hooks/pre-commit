@@ -7,14 +7,22 @@
 # (post-Prettier content). CI keeps the full-repo lint/format jobs as the
 # backstop.
 #
-# Each gate can be skipped individually via the SKIP env var (comma-separated):
+# The quality gates can be skipped individually via the SKIP env var
+# (comma-separated):
 #   SKIP=lint git commit ...      (skips ESLint)
 #   SKIP=format git commit ...    (skips Prettier)
-#   SKIP=gitleaks git commit ...  (skips secret scan)
-#   SKIP=lint,format,gitleaks git commit ...
+#   SKIP=lint,format git commit ...
 #
-# Skipping any of these requires justification in the commit message. See
-# docs/SECURITY-NOTES.md for the SKIP=gitleaks policy specifically.
+# Skipping either requires justification in the commit message.
+#
+# THE SECRET SCAN IS NOT SKIPPABLE. There is deliberately no SKIP=gitleaks
+# (secret-scanning.md invariant 3). A per-commit escape hatch on the scan
+# is indistinguishable from no scan on the commit that needed it most, and
+# it doubles as a bypass of the missing-.gitleaks.local.toml check below —
+# so one flag disarms both the secret layer and the identity layer at
+# once. A secret-shaped string that must legitimately be committed gets an
+# allowlist entry in .gitleaks.toml, reviewed like any other change, not a
+# bypass that leaves no trace outside a commit message.
 
 set -e
 
@@ -31,6 +39,21 @@ is_skipped() {
 
 repo_root="$(git rev-parse --show-toplevel)"
 cd "$repo_root"
+
+# Refuse the retired flag rather than ignoring it: a committer who types
+# SKIP=gitleaks believes the scan was skipped, and silently scanning anyway
+# would be the good outcome — but silently *proceeding* past a typo'd
+# combination like SKIP=gitleaks,lint would not. Fail loudly instead.
+case ",${skip_normalized}," in
+  *",gitleaks,"*)
+    echo "❌ pre-commit: SKIP=gitleaks is not supported — the secret scan cannot be skipped."
+    echo "   If a secret-shaped string must legitimately be committed, add a"
+    echo "   scoped allowlist entry to .gitleaks.toml so the exception is"
+    echo "   reviewable and permanent, instead of invisible in a commit message."
+    echo "   See docs/SECURITY-NOTES.md."
+    exit 1
+    ;;
+esac
 
 # --- Node floor guard --------------------------------------------------------
 # Hooks inherit the invoking shell's Node. Below the engines.node floor,
@@ -94,50 +117,57 @@ else
   pnpm exec lint-staged --config lint-staged.config.mjs
 fi
 
-if is_skipped gitleaks; then
-  echo "⚠️  pre-commit: SKIP=gitleaks — bypassing secret scan. Document the reason in the commit message."
+# --- Secret scan (unconditional) ---------------------------------------------
+gitleaks_bin=""
+if [ -x "$repo_root/.bin/gitleaks" ]; then
+  gitleaks_bin="$repo_root/.bin/gitleaks"
+elif command -v gitleaks >/dev/null 2>&1; then
+  gitleaks_bin="gitleaks"
 else
-  gitleaks_bin=""
-  if [ -x "$repo_root/.bin/gitleaks" ]; then
-    gitleaks_bin="$repo_root/.bin/gitleaks"
-  elif command -v gitleaks >/dev/null 2>&1; then
-    gitleaks_bin="gitleaks"
-  else
-    echo "❌ pre-commit: gitleaks not found."
-    echo "   Run: ./scripts/install-gitleaks.sh"
-    echo "   Or install system-wide (brew install gitleaks) and retry."
-    echo "   To bypass once (requires justification): SKIP=gitleaks git commit ..."
-    exit 1
-  fi
-  # --- Personal-identifier layer (identity-protection.md invariants 3 & 5) --
-  # The per-machine `.gitleaks.local.toml` holds the patterns that would
-  # disclose what they guard if committed, so it cannot ship with the repo —
-  # which makes it a manual bootstrap step, which makes it forgettable. It
-  # was forgotten in Argus, and a real name sat in a tracked file for months
-  # with three scan layers running and no rule that could match it.
-  #
-  # So its ABSENCE is a hard failure here, not a warning. Checking that a
-  # file exists discloses nothing. The local config chains to the committed
-  # one via `[extend] path = ".gitleaks.toml"`, so this second pass also
-  # re-applies every repo allowlist.
-  #
-  # Projects with no pseudonymity requirement opt out by putting the marker
-  # `assurance:no-local-identity-rules` in a comment in .gitleaks.toml —
-  # explicit, visible in review, and fail-closed by default.
-  if [ ! -f "$repo_root/.gitleaks.local.toml" ] &&
-    ! grep -q 'assurance:no-local-identity-rules' "$repo_root/.gitleaks.toml"; then
-    echo "❌ pre-commit: .gitleaks.local.toml is missing."
-    echo "   Personal-identifier scanning is unarmed — the committed config"
-    echo "   cannot carry your email or legal name without disclosing them."
-    echo "   Create it by hand from templates/gitleaks.local.example.toml."
-    echo "   Never let an agent create it or read its contents."
-    echo "   Project not pseudonymous? Put a comment containing"
-    echo "   'assurance:no-local-identity-rules' in .gitleaks.toml."
-    exit 1
-  fi
+  echo "❌ pre-commit: gitleaks not found."
+  echo "   Run: ./scripts/install-gitleaks.sh"
+  echo "   Or install system-wide (brew install gitleaks) and retry."
+  echo "   There is no bypass — the secret scan must run on every commit."
+  exit 1
+fi
 
-  "$gitleaks_bin" protect --staged --redact --config "$repo_root/.gitleaks.toml" --no-banner
-  if [ -f "$repo_root/.gitleaks.local.toml" ]; then
-    "$gitleaks_bin" protect --staged --redact --config "$repo_root/.gitleaks.local.toml" --no-banner
-  fi
+# --- Personal-identifier layer (identity-protection.md invariants 3 & 5) --
+# The per-machine `.gitleaks.local.toml` holds the patterns that would
+# disclose what they guard if committed, so it cannot ship with the repo —
+# which makes it a manual bootstrap step, which makes it forgettable. It
+# was forgotten in Argus, and a real name sat in a tracked file for months
+# with three scan layers running and no rule that could match it.
+#
+# So its ABSENCE is a hard failure here, not a warning. Checking that a
+# file exists discloses nothing. The local config chains to the committed
+# one via `[extend] path = ".gitleaks.toml"`, so this second pass also
+# re-applies every repo allowlist.
+#
+# Projects with no pseudonymity requirement opt out by putting the marker
+# `assurance:no-local-identity-rules` in a comment in .gitleaks.toml —
+# explicit, visible in review, and fail-closed by default.
+#
+# The committed config is read here, so a missing .gitleaks.toml would make
+# the grep error out and report the failure against the wrong file. Check
+# it first and say which file is actually absent.
+if [ ! -f "$repo_root/.gitleaks.toml" ]; then
+  echo "❌ pre-commit: .gitleaks.toml is missing — the repo's committed scanner config."
+  echo "   The secret scan cannot run without it. Restore it before committing."
+  exit 1
+fi
+if [ ! -f "$repo_root/.gitleaks.local.toml" ] &&
+  ! grep -q 'assurance:no-local-identity-rules' "$repo_root/.gitleaks.toml"; then
+  echo "❌ pre-commit: .gitleaks.local.toml is missing."
+  echo "   Personal-identifier scanning is unarmed — the committed config"
+  echo "   cannot carry your email or legal name without disclosing them."
+  echo "   Create it by hand from templates/gitleaks.local.example.toml."
+  echo "   Never let an agent create it or read its contents."
+  echo "   Project not pseudonymous? Put a comment containing"
+  echo "   'assurance:no-local-identity-rules' in .gitleaks.toml."
+  exit 1
+fi
+
+"$gitleaks_bin" protect --staged --redact --config "$repo_root/.gitleaks.toml" --no-banner
+if [ -f "$repo_root/.gitleaks.local.toml" ]; then
+  "$gitleaks_bin" protect --staged --redact --config "$repo_root/.gitleaks.local.toml" --no-banner
 fi
