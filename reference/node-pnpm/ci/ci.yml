@@ -239,6 +239,22 @@ jobs:
       - name: Check dependency licenses (ADR-0002 §G allowlist)
         run: pnpm license-check
 
+      # Generated-file freshness (documentation.md invariant 7). Without this
+      # step "notices track the tree" is a convention, and conventions decay
+      # silently — in Argus the file was stale on main once before a human
+      # happened to notice, and dependency-bot PRs change the tree without
+      # ever regenerating it.
+      #
+      # NOT the usual `regenerate && git diff --exit-code`: the file is only
+      # partly reproducible across hosts. Packages declaring `os`/`cpu`/`libc`
+      # resolve differently on a linux runner than on a maintainer's Mac, so a
+      # whole-file byte diff fails 100% of the time. The generator writes
+      # those into a trailing section and `--check` compares everything above
+      # it — the part that IS a pure function of the tree. It never writes, so
+      # a failure here leaves nothing to clean up. See the script header.
+      - name: Check THIRD-PARTY-NOTICES is in sync with the tree
+        run: pnpm notices:check
+
   commitlint:
     name: Commit message validation
     runs-on: ubuntu-latest

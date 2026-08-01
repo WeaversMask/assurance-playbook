@@ -26,7 +26,12 @@
    personal emails, no home-directory paths (`/Users/<name>/…`), no machine
    identifiers — in code, docs, fixtures, build outputs, or source maps.
    Enforced by extending the secret scanner with **local personal-identifier
-   rules** (invariant 5).
+   rules** (invariant 5) **plus a committed, name-free rule for absolute
+   home-directory paths** (invariant 5a).
+
+   Agents produce these constantly and innocently: a handover recording
+   "run `cd /Users/<name>/proj` first" is the natural way to write down a
+   shell gotcha, and it carries a legal name into the history forever.
 4. **Anything exported out of a private repo gets fresh history** — copy
    files into a new `git init`, never fork/clone-push. A private repo's
    history may contain things its files no longer show.
@@ -37,6 +42,35 @@
    (see `templates/gitleaks.local.example.toml`). The committed config
    never contains them; creating the local file is a human bootstrap step,
    never an agent's.
+
+   **5a. The local file's absence is a hard gate, and the path-shape rule
+   is committed.** Invariant 5 as originally written was a manual bootstrap
+   step with nothing verifying it happened — and in Argus it did not
+   happen. The history was scrubbed of a personal email on 2026-07-04; on
+   2026-07-23 an agent committed `/Users/<name>/argus` into a handover, and
+   it survived for months with pre-commit, pre-push **and** full-history CI
+   scanning running the whole time. Three layers, all healthy, none holding
+   a pattern that could match — because the only file with such a pattern
+   was never created. Two corrections, both in `reference/node-pnpm/`:
+
+   - **The hooks fail when `.gitleaks.local.toml` is missing** (opt out
+     with an `assurance:no-local-identity-rules` marker comment in the
+     committed config for non-pseudonymous projects). Testing that a file
+     *exists* discloses nothing, so this check is safe to commit.
+   - **The absolute-home-path rule ships in the committed config.** Unlike
+     an email or a legal name, `(/Users/|/home/|C:\Users\)<something>/` is
+     a *shape* — it names nobody, so publishing it leaks nothing, and it
+     arms the highest-frequency case from the first commit with no manual
+     step at all.
+
+   *Gotcha, verified against gitleaks 8.30.1:* a rule-scoped allowlist
+   needs the plural `[[rules.allowlists]]` form **and**
+   `regexTarget = "match"`. The default target is `secret`, which is not
+   the same span as the match for a path rule — get it wrong and the
+   allowlist is silently inert, which for a CI-runner path
+   (`/home/runner/…`) means constant false positives and pressure to
+   delete the rule. Test any allowlist by asserting both the hit and the
+   miss; an untested allowlist is the usual way a rule ends up disabled.
 6. **Going public is maintainer-only, voluntary, unscheduled — never
    agentic.** Agents never change repo visibility, never create public
    repos, and never push to retired/frozen archives. The flip follows
@@ -45,6 +79,17 @@
    `refs/pull/*` fetchable even after history rewrites — a pre-scrub
    repo's PRs make scrubbed commits recoverable, so such a repo must never
    go public and never be pushed to. Archive it read-only.
+
+   **7a. Corollary — the pseudonymity decision is made before the first
+   PR, not before going public.** From the moment a PR exists, its
+   `refs/pull/*` pin the tree it was opened against, and `filter-repo`
+   plus a force-push cannot reach them; the only complete remedy is
+   migrating to a fresh repo, which discards every PR, review thread and
+   issue link. On a repo whose *purpose* is demonstrating process, that
+   trail is much of the artifact — so a leak discovered late forces a real
+   choice between hiding the identifier and keeping the evidence. Deciding
+   at `git init` costs nothing; deciding after PR #1 may cost the history.
+   Record the decision in the project's CLAUDE.md at bootstrap.
 8. **Cross-project linkability is a conscious decision.** Reusing one
    pseudonym (and recognizable tooling fingerprints) across projects links
    the projects to each other, though not to you. Decide per project at

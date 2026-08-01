@@ -109,5 +109,35 @@ else
     echo "   To bypass once (requires justification): SKIP=gitleaks git commit ..."
     exit 1
   fi
+  # --- Personal-identifier layer (identity-protection.md invariants 3 & 5) --
+  # The per-machine `.gitleaks.local.toml` holds the patterns that would
+  # disclose what they guard if committed, so it cannot ship with the repo —
+  # which makes it a manual bootstrap step, which makes it forgettable. It
+  # was forgotten in Argus, and a real name sat in a tracked file for months
+  # with three scan layers running and no rule that could match it.
+  #
+  # So its ABSENCE is a hard failure here, not a warning. Checking that a
+  # file exists discloses nothing. The local config chains to the committed
+  # one via `[extend] path = ".gitleaks.toml"`, so this second pass also
+  # re-applies every repo allowlist.
+  #
+  # Projects with no pseudonymity requirement opt out by putting the marker
+  # `assurance:no-local-identity-rules` in a comment in .gitleaks.toml —
+  # explicit, visible in review, and fail-closed by default.
+  if [ ! -f "$repo_root/.gitleaks.local.toml" ] &&
+    ! grep -q 'assurance:no-local-identity-rules' "$repo_root/.gitleaks.toml"; then
+    echo "❌ pre-commit: .gitleaks.local.toml is missing."
+    echo "   Personal-identifier scanning is unarmed — the committed config"
+    echo "   cannot carry your email or legal name without disclosing them."
+    echo "   Create it by hand from templates/gitleaks.local.example.toml."
+    echo "   Never let an agent create it or read its contents."
+    echo "   Project not pseudonymous? Put a comment containing"
+    echo "   'assurance:no-local-identity-rules' in .gitleaks.toml."
+    exit 1
+  fi
+
   "$gitleaks_bin" protect --staged --redact --config "$repo_root/.gitleaks.toml" --no-banner
+  if [ -f "$repo_root/.gitleaks.local.toml" ]; then
+    "$gitleaks_bin" protect --staged --redact --config "$repo_root/.gitleaks.local.toml" --no-banner
+  fi
 fi

@@ -81,6 +81,30 @@ Each stream has a fixed home and a trigger. Fill it when the trigger fires
 6. **Scope discipline:** the ongoing cost stays small — a README when a
    module is born, a doc comment when you export, a guide paragraph when
    a feature ships. No site, no polish, no tooling until assembly.
+7. **A generated file and its freshness check ship in the same PR as the
+   generator.** Not "later", not "recommended" — the generator is not done
+   until CI can tell you the committed output is stale. A committed
+   artifact nobody verifies drifts from its source, and every downstream
+   claim about it becomes false without anyone finding out.
+   *(Argus: the notices generator shipped in P0-11; the check arrived a
+   year later. Two tasks in between deferred it as "known, revisit later" —
+   that phrasing is the smell. The delay cost far more than the check
+   would have: the committed file had to be reformatted after the fact and
+   the script split in three, all of which is free on day one, when the
+   file does not exist yet.)*
+8. **A doc sentence claiming something is checked, enforced or gated must
+   name the script path or CI job that does it.** If you cannot name one,
+   the honest sentence is the aspirational form — "regenerate whenever the
+   tree changes" — not the indicative "regenerated and diffed on every
+   change". This is a **review obligation, not a CI gate**: recognizing a
+   claim is a judgment call, so it lives on the completion checklist and in
+   the reviewer's brief. Mechanize only the part that genuinely is
+   mechanical — a CI step asserting that every script path and CI job name
+   a doc cites actually resolves, which catches stale references but not
+   invented ones.
+   *(Argus: a README claimed notices were "regenerated and diffed on every
+   change". Nothing diffed anything. It survived a year of reviews because
+   nobody had a rule telling them to check.)*
 
 ## Routing quick reference
 

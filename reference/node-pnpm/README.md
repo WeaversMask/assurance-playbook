@@ -16,7 +16,7 @@ the fail-closed plumbing that a naive port would miss.
 | `gitleaks.toml`                          | `useDefault = true` + narrowly-scoped fixture/lockfile allowlists                                                                          |
 | `commitlint.config.cjs`, `lint-staged.config.mjs` | Commit-convention and staged-file gate config (note the shared `SKIP` normalization)                                              |
 | `scripts/check-licenses.mjs`             | SPDX allowlist + named exceptions pinned to exact license strings, fail-closed on unknowns. The `.pnpm` virtual-store traversal is a **pnpm-specific workaround — port the policy, never the workaround** |
-| `scripts/generate-third-party-notices.mjs` | Notices generation kept in sync with the tree (CI-verified)                                                                              |
+| `scripts/generate-third-party-notices.mjs` + `scripts/lib/` | Notices generation **plus the `--check` mode that verifies it** — `pnpm notices:check`, run by the `license` job. Compares only the host-independent part: packages declaring `os`/`cpu`/`libc` resolve differently per host, so they are inventoried below a marker the check stops at, and it fails closed if that marker is missing |
 | `scripts/install-gitleaks.sh`            | Pinned scanner download with PATH fallback and fail-closed missing-binary behavior                                                         |
 
 ## Known gaps (policy leads, reference lags)

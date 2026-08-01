@@ -36,6 +36,15 @@
    process gates fail under momentum; only mechanical ones hold.
 10. **PR hygiene:** linked task ID in the description; tracker and handover
     files updated (see [process.md](process.md)).
+11. **Every committed generated file has a CI freshness check, shipped in
+    the same PR as its generator** ([documentation.md](documentation.md)
+    invariant 7). Prefer a `--check` mode on the generator over
+    `regenerate && git diff --exit-code` in the workflow: only the
+    generator knows which parts of its output are reproducible, and putting
+    that knowledge in a YAML `sed`/ignore list guarantees the two drift
+    apart. A check mode must **never write**, and must **fail closed** when
+    it cannot find what it expects to compare — comparing nothing must
+    never read as clean.
 
 ## Enforcement layering
 

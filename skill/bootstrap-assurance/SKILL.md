@@ -40,6 +40,22 @@ copy source).
 5. Stop at Phase 4's human-only steps and present them as a checklist —
    especially the local personal-identifier patterns file
    (`.gitleaks.local.toml`): never create it, never ask for its contents.
+   **The hooks now fail while it is missing** (identity-protection.md
+   invariant 5a), so say plainly that the first commit is blocked until the
+   maintainer creates it — that block is the feature, not a
+   misconfiguration to work around. For a project that is not pseudonymous,
+   the opt-out is an `assurance:no-local-identity-rules` marker comment in
+   the committed scanner config, chosen deliberately at Phase 0.
+6. **Ask the pseudonymity question at Phase 0 and record the answer** in
+   the project's CLAUDE.md. It is effectively irreversible after the first
+   PR (invariant 7a): `refs/pull/*` survive history rewrites, so a later
+   change of mind means migrating to a fresh repo and discarding every PR
+   and review thread.
+7. **Anything the bootstrap installs a generator for gets its freshness
+   check in the same phase** (quality-gates.md invariant 11,
+   documentation.md invariant 7) — notices files, generated configs,
+   generated docs. Never install a generator and leave "add the check
+   later" as a follow-up; that is the follow-up that does not happen.
 
 ## Hard rules (from the policies — hold even if asked casually)
 
