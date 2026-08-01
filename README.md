@@ -58,5 +58,16 @@ executable by either a human or an agent.
 - Policies lead, the reference lags: where a policy mandates something the
   Argus reference doesn't implement yet, the reference README says so
   explicitly.
+- **The skill has two copies and nothing enforces their agreement** — the
+  canonical one here and the installed one at
+  `~/.claude/skills/bootstrap-assurance/`, which is the copy that actually
+  runs. It has drifted before (the invariant-5a guidance sat here unrunnable
+  for a full release), so edit the canonical file, then copy it across and
+  confirm:
+
+  ```sh
+  cp skill/bootstrap-assurance/SKILL.md ~/.claude/skills/bootstrap-assurance/SKILL.md
+  diff skill/bootstrap-assurance/SKILL.md ~/.claude/skills/bootstrap-assurance/SKILL.md && echo in-sync
+  ```
 - Never commit personal identifiers here — same rule as everywhere else.
   The local patterns file is per-machine and gitignored, even in this repo.
