@@ -32,6 +32,28 @@
      Nothing unscanned leaves the machine.
    - **CI** — scans **full repository history** on every PR and push to the
      default branch. This layer can never be skipped.
+
+     **A range-scanning mechanism does not satisfy this, however it is
+     labelled.** The distinction is easy to lose because the job name says
+     "full history" while the tool underneath scans `base..head`. Verified
+     against `gitleaks/gitleaks-action@ff98106e` (v2.3.9), which the
+     reference used: on `pull_request` and `push` it builds
+     `--log-opts=--no-merges --first-parent <base>^..<head>`, and on a push
+     whose refs match it passes `--log-opts=-1` — a **single commit**. Its
+     unscoped full scan runs only on `workflow_dispatch` and `schedule`. So
+     a repo with no scheduled trigger never scanned its history at all.
+
+     Three specific things a range misses, all of which this layer exists to
+     catch: anything older than the range (a secret committed before the
+     gates were installed — including the bootstrap's own pre-hook
+     foundation commit), anything dropped by `--no-merges` (conflict
+     resolutions written during a merge, which is one of the cases pre-push
+     is justified by), and anything beyond a truncated commit list (GitHub
+     caps a push event's `commits` array at 20).
+
+     Test it by planting a secret in an **old** commit, not at the tip. A
+     violation in the branch's own commits is inside the range, so it fails
+     correctly and tells you nothing about history depth.
 2. **Fail closed on operational errors.** A scan that never ran must not
    pass: missing binary → block with install instructions; scanner's
    underlying git invocation errors → block. (Argus finding: gitleaks exits

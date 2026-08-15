@@ -60,8 +60,11 @@ fi
 # opt out with the `assurance:no-local-identity-rules` marker in
 # .gitleaks.toml for projects that are not pseudonymous.
 local_config="$repo_root/.gitleaks.local.toml"
+# Anchored: the marker only counts as a standalone comment line. A bare
+# substring search is disarmable by prose — see the note in pre-commit.
 if [ ! -f "$local_config" ] &&
-  ! grep -q 'assurance:no-local-identity-rules' "$repo_root/.gitleaks.toml"; then
+  ! grep -qE '^[[:space:]]*#[[:space:]]*assurance:no-local-identity-rules[[:space:]]*$' \
+    "$repo_root/.gitleaks.toml"; then
   echo "❌ pre-push: .gitleaks.local.toml is missing — personal-identifier scanning is unarmed."
   echo "   Create it by hand from templates/gitleaks.local.example.toml (never via an agent)."
   echo "   Not a pseudonymous project? Add 'assurance:no-local-identity-rules' to .gitleaks.toml."

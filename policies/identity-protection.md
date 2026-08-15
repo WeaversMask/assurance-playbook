@@ -15,9 +15,18 @@
    time. Global git config is never relied on.
 2. **The identity is gate-verified, not just configured** — same layering
    as secret scanning:
-   - **Pre-commit:** fail if the effective `user.email`/`user.name` differ
-     from the declared identity (single source of truth in a repo config
-     file, not hardcoded in the hook).
+   - **Pre-commit:** fail if the effective identity differs from the
+     declared one (single source of truth in a repo config file, not
+     hardcoded in the hook). Check **both `GIT_AUTHOR_IDENT` and
+     `GIT_COMMITTER_IDENT`**, not `user.email`/`user.name` — git stamps
+     author and committer separately, and reading config misses every
+     override that actually matters. `git -c user.email=…`, `--author=…`,
+     `GIT_AUTHOR_EMAIL=…` and `GIT_COMMITTER_EMAIL=…` all beat repo config,
+     and a hook that checks only the author lets
+     `GIT_COMMITTER_EMAIL=personal@… git commit` through silently. (Found
+     in a live port, 2026-08-15: pre-push and CI caught it via `%ce`, so
+     nothing reached a remote — but the cheapest layer should not be the
+     porous one.)
    - **Pre-push:** scan the outgoing range's author *and* committer emails
      against an allowlist (declared identity + known bots such as
      dependabot/release bots); fail closed on anything else.
@@ -57,6 +66,22 @@
      with an `assurance:no-local-identity-rules` marker comment in the
      committed config for non-pseudonymous projects). Testing that a file
      *exists* discloses nothing, so this check is safe to commit.
+
+     **The marker only counts as a standalone comment line**, and the hook
+     must match it anchored — `^\s*#\s*assurance:no-local-identity-rules\s*$`,
+     not a bare substring search. A substring search is disarmable by prose:
+     any text in the committed config that merely *mentions* the marker
+     satisfies it, and the most likely such text is a comment explaining
+     that the project does not opt out. That is not hypothetical — it
+     happened during a live port on 2026-08-15, where a pseudonymous
+     project's config carried the line "the `assurance:…` marker is
+     deliberately ABSENT" and thereby disarmed the entire check. Silently:
+     three healthy scan layers, no rule that could match, which is the exact
+     failure this invariant exists to prevent, reproduced inside the file
+     implementing it.
+
+     Assert it both ways when you install it — that a real standalone marker
+     opts out, and that a mention in prose does not.
    - **The absolute-home-path rule ships in the committed config.** Unlike
      an email or a legal name, `(/Users/|/home/|C:\Users\)<something>/` is
      a *shape* — it names nobody, so publishing it leaks nothing, and it

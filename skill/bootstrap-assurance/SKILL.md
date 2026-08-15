@@ -42,6 +42,14 @@ copy source).
    legitimate and selects the `assurance:no-local-identity-rules` opt-out
    marker in the committed scanner config — it must be chosen, not
    defaulted into.
+
+   **On a "yes", never write that marker string into the scanner config at
+   all — not even in a comment saying it is deliberately absent.** The hooks
+   detect the opt-out by searching that file, so any occurrence disarms the
+   personal-identifier layer, silently. Describe the marker instead of
+   quoting it, and match it anchored to a standalone comment line. This is a
+   real 2026-08-15 finding, not a hypothetical: the explaining comment was
+   the thing that disabled the check.
 4. **Commit the Phase 1 foundation before arming any gate.** That is the
    last unhooked commit; everything after it is committed through the
    gates. Derive each gate from the policy invariants using the target

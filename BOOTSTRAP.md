@@ -231,14 +231,39 @@ entry, not a bypass.
 
 ### 3B — CI layers (after Phase 4.1 creates the remote)
 
-| Gate      | Deliberate violation                              | Expected failure       | Observed output (paste) |
-| --------- | ------------------------------------------------- | ---------------------- | ----------------------- |
-| CI layers | Push a branch exercising one violation per CI job | jobs fail as expected  |                         |
+| Gate            | Deliberate violation                                                    | Expected failure                          | Observed output (paste) |
+| --------------- | ----------------------------------------------------------------------- | ----------------------------------------- | ----------------------- |
+| CI layers       | Push a branch exercising one violation per CI job                       | jobs fail as expected                     |                         |
+| Secret / depth  | Plant a secret in an **old** commit, not at the tip, and push           | CI secret job fails                       |                         |
+| Review / draft  | Open a draft PR with no review block, then mark it **ready for review** | review job re-runs on the ready PR and fails |                      |
+
+The last two rows exist because the first one cannot catch either failure,
+and both were live findings (2026-08-15):
+
+- **Depth.** A violation planted in the branch's own commits is *inside* the
+  range a range-scanning tool examines, so the job fails, the row passes, and
+  the fact that CI never scans history stays invisible. Only an old commit
+  distinguishes "scans this push" from "scans the repository"
+  ([secret-scanning.md](policies/secret-scanning.md) invariant 1).
+- **Draft → ready.** The review gate passes trivially on drafts by design, and
+  the default `pull_request` event types omit `ready_for_review`. So a draft's
+  green check survives onto the ready PR on the same SHA and the gate is
+  bypassed with nothing to observe. Re-running the job by hand does not
+  surface it either: a re-run replays the stored event payload, where the PR
+  is still a draft. This row is the only thing that catches it — and note the
+  bootstrap PR itself is opened as a draft, so the very first PR the gate
+  judges is the one that exercises this path.
 
 Every row gets: pass/fail, the observed output, and a one-line note. **A
 row that cannot be made to fail means the gate is not installed, whatever
 the config says** — and a row whose observed output names a different gate
 than the one under test is also a fail, not a pass.
+
+**A gate must be seen to fail on its own terms.** "The job went red" is not
+the assertion; "the job went red *for the reason this gate claims to
+enforce*" is. A gate that fails for an adjacent reason — a range scan
+catching a tip-level secret while claiming to scan history, a job blocking on
+a different gate earlier in the chain — is decoration wearing a passing row.
 
 ## Phase 4 — Remote, then the remaining human-only steps
 

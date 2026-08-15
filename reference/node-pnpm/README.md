@@ -12,13 +12,27 @@ the fail-closed plumbing that a naive port would miss.
 > committed `.gitleaks.toml` is reported against itself instead of being
 > misattributed to the local patterns file. Argus still carries the older,
 > skippable hooks — see the known gaps below.
+>
+> **Three further corrections landed 2026-08-15**, all found by an
+> independent review during a live port to a new project — each one a gate
+> that could not do the job its name claimed:
+>
+> 1. The missing-local-config check matched the opt-out marker as a bare
+>    substring, so a comment *mentioning* the marker disarmed it. Now
+>    anchored to a standalone comment line (identity-protection.md 5a).
+> 2. `ci.yml` scanned a commit range while calling itself a full-history
+>    scan, because `gitleaks-action` only full-scans on `workflow_dispatch`
+>    and `schedule`. Now runs `gitleaks detect --log-opts="--all"` directly.
+> 3. The identity spec's pre-commit layer described checking
+>    `user.email`/`user.name`, which misses `GIT_COMMITTER_EMAIL`. The
+>    policy now requires checking author **and** committer idents.
 
 | File                                     | Demonstrates                                                                                                                              |
 | ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
 | `hooks/pre-commit`                       | Staged-scope lint/format via lint-staged, then an **unskippable** gitleaks scan of staged content; per-gate `SKIP` for lint/format with normalization, `SKIP=gitleaks` rejected; **fail-closed toolchain floor check** |
 | `hooks/pre-push`                         | gitleaks over the exact outgoing range, **no bypass**; conservative fallback range; **fail-closed on scanner operational errors** (a scan that never ran must not pass) |
 | `hooks/commit-msg`                       | commitlint (conventional commits), skippable per-gate only                                                                                 |
-| `ci/ci.yml`                              | The CI backstop layer: full-graph gates, full-history gitleaks, license job, review-evidence job (with bot-author exemption)                |
+| `ci/ci.yml`                              | The CI backstop layer: full-graph gates, **genuinely** full-history gitleaks (run directly, not via the range-scanning action), license job, review-evidence job (with bot-author exemption). Note `types: [… ready_for_review]` on the `pull_request` trigger — without it a draft's green check survives onto the ready PR and the review gate is bypassed |
 | `ci/mutation.yml`, `ci/release.yml`      | Mutation-testing job (Stryker) and changesets-based release flow                                                                           |
 | `gitleaks.toml`                          | `useDefault = true` + narrowly-scoped fixture/lockfile allowlists                                                                          |
 | `commitlint.config.cjs`, `lint-staged.config.mjs` | Commit-convention and staged-file gate config (note the shared `SKIP` normalization)                                              |
@@ -31,7 +45,14 @@ the fail-closed plumbing that a naive port would miss.
 - **Identity gates** (identity-protection.md §2) are **not implemented
   here** — at copy time Argus enforced identity via repo-local git config
   only; the hook/CI verification layer is a pending Argus task. Build new
-  projects to the policy, not to this gap.
+  projects to the policy, not to this gap. The invariant-2 spec was
+  tightened on 2026-08-15 to require checking `GIT_AUTHOR_IDENT` **and**
+  `GIT_COMMITTER_IDENT` at pre-commit; a first implementation built from the
+  older wording checked only the author.
+- **Argus now lags the three 2026-08-15 corrections above** (anchored
+  opt-out marker, direct full-history CI scan, author+committer identity
+  check), in addition to the unskippable-scanner rule below. Porting them
+  across is a pending Argus task.
 - **Argus lags the unskippable-scanner rule.** Its live `.husky/pre-commit`
   and `.husky/pre-push` still honour `SKIP=gitleaks`, and
   `docs/SECURITY-NOTES.md` still documents it as sanctioned with written

@@ -369,33 +369,72 @@ jobs:
           exit 1
 
   secret-scan:
-    name: Secret scan (gitleaks)
+    name: Secret scan (gitleaks, full history)
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    # gitleaks-action calls GET /repos/{owner}/{repo}/pulls/{n}/commits to
-    # enumerate the PR's commits, which the default contents:read scope does
-    # not grant. Add pull-requests:read here so the rest of the workflow
-    # stays on least-privilege.
     permissions:
       contents: read
-      pull-requests: read
+    # This job used `gitleaks/gitleaks-action@ff98106e` (v2.3.9). It does NOT
+    # scan full history on the events that matter, despite the job name —
+    # verified against the action's source at that pinned SHA:
+    #
+    #   push          → --log-opts=--no-merges --first-parent <base>^..<head>
+    #                   (and --log-opts=-1, a SINGLE commit, when the refs match)
+    #   pull_request  → ScanPullRequest(), same range form
+    #   workflow_dispatch / schedule → unscoped detect, i.e. full history
+    #
+    # So the only layer with no bypass was scanning a commit range, and a repo
+    # without a scheduled trigger never scanned its history at all. Three
+    # things a range misses: commits older than the range (including a
+    # bootstrap's own pre-hook foundation commit), anything dropped by
+    # --no-merges (conflict resolutions written during a merge — one of the
+    # cases pre-push is justified by), and anything past the 20-commit
+    # truncation of a push event's `commits` array.
+    #
+    # secret-scanning.md invariant 1 layer 3 requires FULL REPOSITORY HISTORY
+    # on every PR and push to the default branch, so run gitleaks directly.
+    # Using the repo's own install script keeps the pinned version in one
+    # place (scripts/install-gitleaks.sh, SHA-256 verified) instead of
+    # duplicating it into an action ref that drifts separately.
+    env:
+      ARGUS_SKIP_GITLEAKS_INSTALL: "0"
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
-          # Full history so gitleaks can scan every commit in a PR (and the
-          # full repo history on push-to-main).
+          # Required for a genuine full-history scan.
           fetch-depth: 0
 
-      - name: Gitleaks
-        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
-        env:
-          # Required by gitleaks-action v2+ to fetch the PR diff via the
-          # GitHub API. The default GITHUB_TOKEN has read-only contents
-          # scope, which is all the action needs.
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Use repo-committed config (.gitleaks.toml) including the fixture
-          # allowlist. The action picks it up automatically.
-          GITLEAKS_CONFIG: .gitleaks.toml
+      - name: Install pinned gitleaks
+        run: ./scripts/install-gitleaks.sh
+
+      - name: Scan full history
+        run: |
+          set -eu
+
+          # The committed config only. .gitleaks.local.toml is gitignored and
+          # deliberately absent in CI — personal-identifier patterns cannot
+          # live on a shared runner without disclosing what they protect
+          # (identity-protection.md invariant 5).
+          status=0
+          output=$(.bin/gitleaks detect \
+            --source . \
+            --config .gitleaks.toml \
+            --log-opts="--all" \
+            --redact --no-banner 2>&1) || status=$?
+          printf '%s\n' "$output"
+
+          if [ "$status" -ne 0 ]; then
+            echo "::error title=Secret scan failed::gitleaks found potential secrets in the repository history."
+            exit 1
+          fi
+
+          # gitleaks can exit 0 while its underlying git invocation errored,
+          # logging ERR alongside "no leaks found" (invariant 2). Fail on the
+          # log line too — a scan that never ran must not read as clean.
+          if printf '%s' "$output" | grep -q "ERR"; then
+            echo "::error title=Secret scan did not complete::gitleaks reported an internal error; failing closed."
+            exit 1
+          fi
 
   # Architecture boundary enforcement (OPS-04, argus-oss#15 item 2): the
   # dependency-cruiser rules in .dependency-cruiser.cjs make the package

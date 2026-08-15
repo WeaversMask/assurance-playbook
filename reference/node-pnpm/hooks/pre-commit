@@ -155,8 +155,15 @@ if [ ! -f "$repo_root/.gitleaks.toml" ]; then
   echo "   The secret scan cannot run without it. Restore it before committing."
   exit 1
 fi
+# The marker must be a STANDALONE COMMENT LINE. A bare substring search is
+# disarmable by prose: any text in .gitleaks.toml that merely mentions the
+# marker satisfies it, and the likeliest such text is a comment explaining
+# that the project does NOT opt out. That disarmed this check in a live port
+# (2026-08-15) — silently, which is the whole failure mode invariant 5a
+# exists to prevent.
 if [ ! -f "$repo_root/.gitleaks.local.toml" ] &&
-  ! grep -q 'assurance:no-local-identity-rules' "$repo_root/.gitleaks.toml"; then
+  ! grep -qE '^[[:space:]]*#[[:space:]]*assurance:no-local-identity-rules[[:space:]]*$' \
+    "$repo_root/.gitleaks.toml"; then
   echo "❌ pre-commit: .gitleaks.local.toml is missing."
   echo "   Personal-identifier scanning is unarmed — the committed config"
   echo "   cannot carry your email or legal name without disclosing them."
