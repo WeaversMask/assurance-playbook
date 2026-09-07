@@ -82,7 +82,6 @@ const DECISION_LINE = /^\|\s*\*{0,2}(D-[0-9A-Za-z]+)\*{0,2}\s*\|/;
 const TRIGGER_LABEL = /\*{0,2}Trigger:\*{0,2}\s*/i;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const PHASE_BOUNDARY = /^P(\d+)-(start|exit)$/;
-const TASK_ID = /^[A-Z]?\d*[A-Za-z]?\d+(-\d+)?$/;
 
 const fail = [];
 const dormantNotes = [];
@@ -111,33 +110,82 @@ if (!section) {
 }
 
 // ── Current phase: the thing triggers are resolved against ──────────────────
-// Read from the tracker's own "Current state" section. A project that tracks
-// phases elsewhere changes this function and nothing else.
+// Read from the "**Phase:**" line in the tracker's Current state section — the
+// LINE, not the section.
+//
+// The first version scanned the whole section for the first phase-shaped token,
+// which is a fail-OPEN: "finishing P1-17, now entering P3-01" resolved to P1-17,
+// so a trigger of P2-start read as unexpired and the gate PASSED while printing
+// the stale phase in its own success line. A check that resolves the wrong
+// value confidently is worse than one that cannot resolve at all.
+//
+// More than one token on the line therefore FAILS rather than picking one.
 function currentPhase() {
   const state = text.split(/^## /m).find((s) => s.startsWith("Current state"));
-  const m = state && state.match(/\bP(\d+)-([A-Za-z0-9]+)\b/);
-  if (!m) return null;
-  return { major: Number(m[1]), raw: m[0] };
+  if (!state) return { error: 'no "Current state" section' };
+  const line = state.split("\n").find((l) => /\*\*Phase:\*\*/.test(l));
+  if (!line) return { error: 'no "**Phase:**" line in Current state' };
+  const tokens = [...line.matchAll(/\bP(\d+)-([A-Za-z0-9]+)\b/g)];
+  if (tokens.length === 0) return { error: `the "**Phase:**" line holds no P<n>-<x> token: ${line.trim()}` };
+  if (tokens.length > 1) {
+    return { error: `the "**Phase:**" line holds ${tokens.length} phase tokens; which one is current is ambiguous` };
+  }
+  return { major: Number(tokens[0][1]), raw: tokens[0][0] };
 }
 
 const phase = currentPhase();
-if (!phase) {
+if (phase.error) {
   die(
     `❌ decisions: cannot determine the current phase from ${TRACKER}.`,
-    '   Expected a token like "P1-04" in the "Current state" section.',
+    `   ${phase.error}`,
+    '   Expected exactly one token like "P1-04" on the "**Phase:**" line.',
     "   Phase-boundary triggers cannot be resolved without it, and a trigger",
     "   that cannot be resolved must not read as unexpired.",
   );
 }
 
-// ── Known ids, so a typo'd trigger is caught ────────────────────────────────
-// A trigger naming an id that appears nowhere is a typo, and a typo is a
-// trigger that never fires — indistinguishable from a trigger that never came
-// due, which is exactly the failure this gate exists to catch.
-const knownIds = new Set();
-for (const m of text.matchAll(/^\|\s*\*{0,2}([A-Z]?\d*[A-Za-z]?\d+(?:-\d+)?)\*{0,2}\s*\|/gm)) {
-  knownIds.add(m[1]);
+// ── Ids, harvested by section ───────────────────────────────────────────────
+// Two sets, and the difference between them is the whole completed-id check.
+//
+// `knownIds` catches the typo: a trigger naming an id that appears nowhere never
+// fires, and is indistinguishable from one that has not come due.
+//
+// `completedIds` decides whether a trigger has FIRED, and it is read from the
+// "Recently completed" section BY HEADING. The first version tested each line
+// for /Recently completed|✅|Done/ with no idea which section the line was in —
+// so against the tracker template this repo actually ships, whose completed
+// rows are `| ID | Task | PR | Merged |` and carry none of those words, every
+// completed-id trigger read as unfired. A silent pass in the gate whose stated
+// premise is that a check examining nothing must never read as clean.
+//
+// The id shape is deliberately NOT pattern-matched. An earlier regex accepted
+// `W1` and `P1-17` and rejected `T-001`, which is the shape the tracker template
+// advertises — so the exhibit and the template disagreed about ids while both
+// claimed to be the reference. A trigger token that is not a date, a phase
+// boundary or `standing` must simply RESOLVE: found in the tracker, or the row
+// fails. Prose fails that test for free.
+function idsIn(sectionText) {
+  const ids = new Set();
+  if (!sectionText) return ids;
+  for (const line of sectionText.split("\n")) {
+    if (!/^\|/.test(line) || /^\|[\s:|-]+\|?$/.test(line)) continue;
+    const first = line.split("|")[1];
+    if (!first) continue;
+    const id = first.trim().replace(/[*`]/g, "");
+    if (id && !/\s/.test(id) && id.length <= 24 && id.toLowerCase() !== "id") ids.add(id);
+  }
+  return ids;
 }
+
+const sectionsByHeading = new Map(
+  text.split(/^## /m).slice(1).map((s) => [s.split("\n")[0].trim(), s]),
+);
+const sectionNamed = (re) => [...sectionsByHeading].find(([h]) => re.test(h))?.[1];
+
+const knownIds = new Set();
+for (const [, s] of sectionsByHeading) for (const id of idsIn(s)) knownIds.add(id);
+
+const completedIds = idsIn(sectionNamed(/recently completed|^completed/i));
 
 // ── Where the trigger lives ─────────────────────────────────────────────────
 // Two shapes are accepted, because both are in use. A dedicated `Trigger`
@@ -213,21 +261,17 @@ for (const line of rows) {
     continue;
   }
 
-  if (TASK_ID.test(token)) {
-    if (!knownIds.has(token)) {
-      fail.push(`${id}: trigger \`${token}\` resolves to no id in the tracker. A typo is a trigger that never fires.`);
-    } else {
-      const done = new RegExp(`^\\|\\s*\\*{0,2}${token}\\*{0,2}\\s*\\|`, "m");
-      const row = section.length && text.split("\n").find((l) => done.test(l) && /Recently completed|✅|Done/.test(l));
-      if (row) fail.push(`${id}: trigger \`${token}\` has completed. Answer the row or consciously re-date it.`);
-    }
+  if (!knownIds.has(token)) {
+    fail.push(
+      `${id}: trigger \`${token}\` is not a date, not a phase boundary, not \`standing\`, ` +
+        `and resolves to no id in the tracker. A typo is a trigger that never fires.`,
+    );
     continue;
   }
 
-  fail.push(
-    `${id}: trigger \`${token}\` is not one of the four permitted forms ` +
-      `(task/group id, phase boundary, ISO date, standing).`,
-  );
+  if (completedIds.has(token)) {
+    fail.push(`${id}: trigger \`${token}\` has completed. Answer the row or consciously re-date it.`);
+  }
 }
 
 // ── Report ──────────────────────────────────────────────────────────────────

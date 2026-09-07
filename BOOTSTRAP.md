@@ -37,9 +37,10 @@ install.
 > which entry each section answers. Only genuinely missing or ambiguous items go
 > back to the maintainer.
 
-Four things are collected here, in full, before anything else. The remaining
-eighteen decisions live in [`decisions/catalogue.md`](decisions/catalogue.md) and
-are worked from step 5.
+Four things are collected here, in full, before anything else. Two of them —
+the tier and pseudonymity — **are** catalogue entries (T0 and A1), inlined
+because everything else hangs off them. The remaining twenty live in
+[`decisions/catalogue.md`](decisions/catalogue.md) and are worked from step 5.
 
 **Say this before the first question.** Otherwise the check that makes declining
 safe reads as a punishment for declining:
@@ -127,11 +128,13 @@ instead of stalling the run.
    local tool binaries.
 4. `LICENSE` + manifest license field, agreeing with each other.
 5. Process furniture from `templates/`: `AGENTS.md` (from
-   `templates/AGENTS.template.md`) as the onboarding home every agent reads, plus — only
-   for the harness(es) named in Phase 0 — that harness's entry file as a
-   pointer plus delta (for Claude Code, `CLAUDE.md` from
-   `runners/claude/CLAUDE.template.md`), placeholders filled — including the pseudonymity
-   decision from Phase 0.4), `docs/IMPLEMENTATION.md` (from the
+   `templates/AGENTS.template.md`) as the onboarding home every agent reads —
+   **placeholders filled, including the declared identity and the pseudonymity
+   decision from Phase 0.4**, which live there rather than in a harness file so
+   the identity gates' single source of truth reaches every agent. Plus, only
+   for the harness(es) named in Phase 0, that harness's entry file as a pointer
+   plus delta (for Claude Code, `CLAUDE.md` from
+   `runners/claude/CLAUDE.template.md`). Then `docs/IMPLEMENTATION.md` (from the
    skeleton), `docs/HANDOVER.md`, and the full documentation layout from
    [documentation.md](policies/documentation.md) (`docs/handovers/`,
    `docs/adr/`, `docs/guide/`, `docs/dev/`, `docs/architecture.md` stub),
@@ -176,7 +179,7 @@ safety class, which does not scale:
 | 8 review-evidence gate | quality | **tier 2+**, and only where a remote exists |
 | 9 freshness check per bootstrap-time generator | quality | every tier, where a generator exists |
 | 10 decision-trigger check | meta | **every tier** |
-| 11 budget gates | budget | **tier 3** |
+| 11 budget gates | budget | **tier 3** — see below |
 
 A tier-1 project installs no coverage floor, no full-tree licence gate and no
 review gate — and exactly the same three secret-scan layers and identity gates as
@@ -222,6 +225,12 @@ fresh install is the worst possible time to debug a misattributed error.
    doesn't).
 8. **Review-evidence CI gate** ([process.md](policies/process.md)): fail
    non-draft PRs lacking the `## Independent review` block/packet.
+9. **Freshness checks ship with their generators.** Anything installed
+   above that generates a committed file (notices, generated configs or
+   docs) gets its `--check`-style CI verification in this same phase
+   ([quality-gates.md](policies/quality-gates.md) invariant 11) — never
+   as a follow-up.
+
 10. **The decision-trigger check** ([process.md](policies/process.md), "Open
     decisions"): fails the build when an open row's trigger has already passed.
     Fail-closed on a missing section, an unparseable table, zero rows, an
@@ -238,11 +247,14 @@ fresh install is the worst possible time to debug a misattributed error.
     implementation; the tracker needs its `Trigger` column
     (`templates/IMPLEMENTATION.skeleton.md`).
 
-9. **Freshness checks ship with their generators.** Anything installed
-   above that generates a committed file (notices, generated configs or
-   docs) gets its `--check`-style CI verification in this same phase
-   ([quality-gates.md](policies/quality-gates.md) invariant 11) — never
-   as a follow-up.
+11. **Budget gates** (tier 3 only, and only where agent or model budget is
+    actually being spent): each control that exists for *cost* rather than
+    safety — review breadth, model class, agent count — gets a **named opt-out
+    environment variable**, documented in `AGENTS.md`. Without a sanctioned
+    valve, budget overruns get taken unilaterally and invisibly, and people
+    learn to route around the *safety* rule when what they needed was the budget
+    one ([quality-gates.md](policies/quality-gates.md), gate classes).
+
 
 ### HUMAN STOP — the local personal-identifier patterns file
 
@@ -322,7 +334,8 @@ the result in a **verification matrix** in the bootstrap PR description.
 | Decision triggers | Add an open row whose trigger has already passed  | check blocks, names the row | |
 | Fail-closed paths | Remove/rename the scanner binary, attempt commit       | block with instructions | |
 
-**Tier gates which rows are required.** Every tier proves the safety set — both
+**Tier gates which rows are required.** Every tier proves the same base set —
+the safety rows plus the cheap universal ones — namely both
 secret rows, bypass refused, both identity rows, local patterns, committed
 config, placeholder state, empty local config, commit message, decision triggers,
 fail-closed paths. Lint/types, coverage and licence rows are required at tier 2+.
@@ -455,9 +468,9 @@ Then finish **Phase 3B** against it.
 - Bootstrap PR includes: the completed verification matrix (with observed
   output and every row's state), recorded deviations (invariants not natively
   satisfiable, with reasons), and the decision record from Phase 0.
-- **Open the bootstrap PR as a draft.** It is the first PR judged by the
-  review-evidence gate installed in Phase 2.8, which passes drafts
-  trivially and fails ready PRs with no review evidence. Take it out of
+- **Open the bootstrap PR as a draft** *(where the review-evidence gate was
+  installed — Phase 2.8, tier 2+)*. It is then the first PR that gate judges: it
+  passes drafts trivially and fails ready PRs with no review evidence. Take it out of
   draft once a fresh-context reviewer has reviewed the bootstrap diff and
   the matrix, and the `## Independent review` block/packet is attached —
   the gate applies to its own installation like any other change.

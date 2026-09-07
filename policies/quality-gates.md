@@ -128,6 +128,10 @@ the gate:
 | **Safety** | secret scanning, identity, provenance | **none, at any layer.** Not skippable, not deviable, not dormant |
 | **Quality** | lint, format, types, coverage, licence | scoped, named, justified (invariant 7) |
 | **Budget** | review breadth, model class, agent count | a named opt-out environment variable |
+| **Meta** | gates guarding the assurance layer itself — the decision-trigger check, a skippable-set assertion, an inertness check | **inherits the class of what it guards.** The decision ledger is what makes declining safe, so its check takes no skip and no dormant state, exactly like the safety class |
+
+*(A hook manager or a package manager is a **prerequisite**, not a gate: it
+enforces nothing on its own and has no bypass policy to state.)*
 
 The third class exists because without a sanctioned valve, budget overruns get
 taken unilaterally and invisibly. A wide review is a budget decision, not a

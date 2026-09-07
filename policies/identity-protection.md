@@ -154,9 +154,10 @@
      Its output — the list of rule ids — is content-free and is what goes in the
      matrix. **The maintainer exercises these rows, not an agent:** proving them
      requires the file to exist in an unarmed state, and an agent never creates,
-     reads, or asks about that file. The bootstrap procedure owes a matrix row
-     per rejection branch and one for the self-test; until those land, this
-     paragraph is a requirement on the procedure, not a description of it.
+     reads, or asks about that file. The bootstrap procedure carries a matrix row
+     for the missing-file, empty-config and placeholder-value branches. It does
+     **not** yet carry one for the self-test, so that part of this paragraph is
+     still a requirement on the procedure rather than a description of it.
 
    *Gotcha, verified against gitleaks 8.30.1:* a rule-scoped allowlist
    needs the plural `[[rules.allowlists]]` form **and**

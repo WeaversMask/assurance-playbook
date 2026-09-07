@@ -52,7 +52,8 @@ per-module tier scales values inside the answers. A module created later joins
 the documentation capture trigger for *"a module is created or its public surface
 changes"* — no new mechanism.
 
-**Consequences.** Tier gates 13 of the 22 entries, the values inside several
+**Consequences.** Tier gates 12 of the 22 entries (nine at tier 2, three at
+tier 3), the values inside several
 more, which gates Phase 2 installs, and how many Phase 3 rows must be proven.
 **It never scales the safety class.**
 
@@ -312,7 +313,10 @@ just below it so regressions fail rather than drift.
 assert the *right* thing.
 
 ### E4 — A project-specific gate class
-**Tier 2 · deferred · applies when** a category of thing must never enter the repo.
+**Tier 1 · deferred · applies when** a category of thing must never enter the repo.
+*(Tier 1, not 2: its Consequences make it a safety-class gate, and the tier never
+scales the safety class. An earlier draft had it at tier 2, which meant a tier-1
+repo holding licensed third-party material was never asked.)*
 **Default** none.
 **Alternatives** a provenance gate over the tree.
 **How to tell** is there material — licensed course content, customer data,

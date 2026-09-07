@@ -40,7 +40,18 @@ the fail-closed plumbing that a naive port would miss.
 | `scripts/generate-third-party-notices.mjs` + `scripts/lib/` | Notices generation **plus the `--check` mode that verifies it** — `pnpm notices:check`, run by the `license` job. Compares only the host-independent part: packages declaring `os`/`cpu`/`libc` resolve differently per host, so they are inventoried below a marker the check stops at, and it fails closed if that marker is missing |
 | `scripts/install-gitleaks.sh`            | Pinned scanner download with PATH fallback and fail-closed missing-binary behavior                                                         |
 
+| `scripts/check-decisions.mjs`            | Decision-trigger gate: fails when an open decision's trigger has already passed. Fail-closed on a missing section, an unparseable table, zero rows, an unreadable phase, or a trigger resolving to no id |
+
 ## Known gaps (policy leads, reference lags)
+
+- **`scripts/check-decisions.mjs` is not wired into anything here.** BOOTSTRAP Phase 2
+  item 10 requires it in a hook **and** in CI; this exhibit ships the script and
+  neither invocation, so the gate has never been seen to fail in the reference.
+  It was exercised against fixtures before shipping, but a gate proven only by
+  its author's fixtures is exactly what this playbook warns about — and this one
+  had two silent passes found in review, both because the fixtures used a
+  tracker shape the templates here do not produce. Wire it and prove it before
+  treating this row as a worked example.
 
 - **Identity gates** (identity-protection.md §2) are **not implemented
   here** — at copy time Argus enforced identity via repo-local git config

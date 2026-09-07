@@ -6,7 +6,10 @@
 
 ## Current state
 
-- **Phase:** 0 — Foundation
+- **Phase:** P0-01 — Foundation
+      <!-- Exactly one P<n>-<x> token on this line. The decision-trigger
+           check resolves phase-boundary triggers against it and fails
+           closed if it finds none or more than one. -->
 - **Active plan doc:** <link the one doc a session should load>
 - **Last updated:** YYYY-MM-DD (session/PR)
 
@@ -51,6 +54,11 @@
 
 | ID  | Decision needed | Recommendation | Trigger | Raised |
 | --- | --------------- | -------------- | ------- | ------ |
+| D-000 | **Assurance tier {{TIER}}** — {{WHY}} | re-read the escalators | {{DATE_OR_PHASE}} | {{DATE}} |
+
+*(`D-000` is seeded at bootstrap and is why this table is never empty — the check
+fails closed on zero rows, because an empty table means the section was gutted
+rather than that nothing has been declined.)*
 
 ## Metrics snapshot
 

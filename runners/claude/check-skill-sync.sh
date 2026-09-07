@@ -55,9 +55,12 @@ installed="${ASSURANCE_SKILL_INSTALL_DIR:-$HOME/.claude/skills}/bootstrap-assura
 # first version printed it in full, so an override elsewhere leaked an absolute
 # path into exactly the output the comment above says gets pasted into
 # handovers. Found in review, 2026-09-07.
+# `${HOME:-/nonexistent}`: with HOME unset the pattern would degrade to `/*`,
+# every absolute path would match, and the function would print `~` glued to a
+# full path — an absolute path in the output this comment says gets pasted.
 tilde() {
   case "$1" in
-    "$HOME"/*) printf '~%s' "${1#"$HOME"}" ;;
+    "${HOME:-/nonexistent}"/*) printf '~%s' "${1#"${HOME:-/nonexistent}"}" ;;
     *) printf '$ASSURANCE_SKILL_INSTALL_DIR/bootstrap-assurance/SKILL.md' ;;
   esac
 }

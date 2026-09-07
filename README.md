@@ -57,8 +57,7 @@ all.
 | `decisions/catalogue.md`    | The 22 questions a project answers at Phase 0 — default, alternatives, how to tell which applies, what each branch costs, and where the answer is recorded |
 | `decisions/mechanism-rubric.md` | Seven criteria for scoring a mechanism the playbook has never heard of, with a pass rule and a worked example. Replaces the tool table that used to rot here |
 | `reference/node-pnpm/`      | Real hooks, CI, and scripts — a worked example, not a copy source                                                                               |
-| `runners/`                  | Harness-specific furniture, installed only for the harness a project names. `AGENTS.md` is the onboarding home for every agent regardless        |
-| `templates/`                | Genericized starting files: project-plan template, CLAUDE.md, tracker, handover/task/PR/ADR templates, go-public checklist, local gitleaks patterns example |
+| `templates/`                | Runner-agnostic starting files: `AGENTS.md`, project plan, tracker with its decision table, ADR/PR/handover/task templates, the bootstrap summary, the go-public checklist, and the local scanner-patterns example |
 | `runners/`                  | Runner-specific furniture, installed only for the harness a project names. `runners/claude/` holds the skill (canonical copy; installed at `~/.claude/skills/bootstrap-assurance/`), the harness entry-file template, and the sync check |
 
 ## Using it

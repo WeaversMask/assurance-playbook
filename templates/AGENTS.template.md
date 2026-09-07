@@ -34,6 +34,20 @@ and the policy cannot drift.
 
 ---
 
+## This project's identity
+
+**This repo commits only as `{{PUBLIC_NAME}} <{{PUBLIC_NOREPLY_EMAIL}}>`** —
+repo-local git config, verified by hooks and CI, never inherited from global
+config. This line is the **single source of truth** the identity gates read.
+
+**Pseudonymous: {{PSEUDONYMOUS_YES_NO}}.** Decided at bootstrap and effectively
+irreversible after the first PR — `refs/pull/*` survive history rewrites, so
+changing it later means a fresh repo and the loss of every PR and review thread.
+
+Personal identifiers never appear in file content either: no personal emails, no
+absolute home-directory paths, no machine identifiers — in code, docs, fixtures,
+build outputs or script output.
+
 ## Start here, every session
 
 1. **Sync before reading:** `git switch {{DEFAULT_BRANCH}} && git pull --ff-only`.
