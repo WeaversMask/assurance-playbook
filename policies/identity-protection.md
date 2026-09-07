@@ -11,8 +11,9 @@
 1. **Each project declares exactly one public identity** — display name +
    provider noreply email (e.g. `<handle>` +
    `<id>+<handle>@users.noreply.github.com`) — recorded in the project's
-   CLAUDE.md/contributor doc and set as **repo-local** git config at clone
-   time. Global git config is never relied on.
+   `AGENTS.md`/contributor doc — the runner-agnostic onboarding home, so the
+   declaration reaches an agent on any harness ([documentation.md](documentation.md)
+   invariant 1) — and set as **repo-local** git config at clone time. Global git config is never relied on.
 2. **The identity is gate-verified, not just configured** — same layering
    as secret scanning:
    - **Pre-commit:** fail if the effective identity differs from the
@@ -183,7 +184,8 @@
    trail is much of the artifact — so a leak discovered late forces a real
    choice between hiding the identifier and keeping the evidence. Deciding
    at `git init` costs nothing; deciding after PR #1 may cost the history.
-   Record the decision in the project's CLAUDE.md at bootstrap.
+   Record the decision in the project's `AGENTS.md` at bootstrap, where every
+   agent reads it, rather than in a file only one harness loads.
 8. **Cross-project linkability is a conscious decision.** Reusing one
    pseudonym (and recognizable tooling fingerprints) across projects links
    the projects to each other, though not to you. Decide per project at

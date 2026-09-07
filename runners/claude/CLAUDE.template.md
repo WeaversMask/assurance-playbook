@@ -1,34 +1,49 @@
-# CLAUDE.md — {{PROJECT}} agent onboarding
+# CLAUDE.md — {{PROJECT}}
 
-**Start here every session:** sync first — `git switch {{DEFAULT_BRANCH}} && git pull --ff-only` (a stale branch carries a stale tracker/handover) — then read [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md) (current state, Up Next), then [docs/HANDOVER.md](docs/HANDOVER.md) (previous session's context), then whatever active plan doc IMPLEMENTATION.md names. Load nothing else preemptively.
+**Are you the independent reviewer?** Go to [AGENTS.md](AGENTS.md) and read its
+first section, then stop. Your onboarding *negates* the sequence below — you must
+not read the tracker or the handover.
 
-## Context budget (user-enforced — do not bypass)
+**Otherwise: read [AGENTS.md](AGENTS.md) now, in full, and follow it.** It is the
+onboarding home for every agent in this repo regardless of harness — session
+start, the rules this project declares, how work is done, the context budget, and
+the never-on-any-harness list. This file is a **pointer plus a delta**: only what
+is true for Claude Code and absent or different elsewhere. **Where the two
+disagree on shared content, AGENTS.md wins.**
 
-- At **~50% context used**: finish the current commit, update `HANDOVER.md`, stop cleanly.
-- **Never start new work past 70%** — rotate the handover instead (archive + rewrite).
-- Prefer tasks that fit one session. Broad searches go through a search subagent so only conclusions enter this context.
+---
 
 ## Permission-prompt descriptions
 
-Write every Bash `description` so the maintainer can decide from the prompt alone:
+Every Bash `description` is written so the maintainer can decide from the prompt
+alone:
 
 - **Read-only** commands: one short clause.
-- **State-changing** commands (installs, writes, push, deletions, downloads, config edits): `action + exact target — why / task ID — scope & how to undo`.
-- Never vaguer than the real effect. Split compound commands so each prompt is one decision. Justification longer than ~2 sentences goes in chat _before_ the call.
+- **State-changing** commands (installs, writes, pushes, deletions, downloads,
+  config edits): `action + exact target — why / task ID — scope & how to undo`.
+- Never vaguer than the real effect. Split compound commands so each prompt is
+  one decision. Justification longer than ~2 sentences goes in chat *before* the
+  call.
 
-## Best practices (hold these at all times)
+## Harness affordances this repo relies on
 
-- **Sign-off gates run at the repo ROOT before every push:** `{{ROOT_GATE_COMMANDS}}`. Filtered/partial runs are for iteration only, never sign-off — they miss whole-graph failures.
-- **Independent review pass before requesting merge — never skip it.** Fresh-context agent, tiered by diff risk: light for docs/config-only, full packet for executable logic; mid-tier model by default, **escalated model for domain core / boundary code / releases**, cross-family reviewer preferred.
-- **Secret scanning is layered — keep every layer intact:** pre-commit scans staged content, pre-push scans the outgoing range, CI scans full history. Skipping any local layer requires written justification.
-- **Identity is gate-verified:** this repo commits only as `{{PUBLIC_NAME}} <{{PUBLIC_NOREPLY_EMAIL}}>` (repo-local git config + hooks + CI). Never commit with a personal identity; personal identifiers never appear in file content.
-- Work through the full Task Completion Checklist (docs/plan/process.md) before calling a task done.
+- **Search subagents** for broad sweeps, so only conclusions enter the working
+  context — the context-budget rule in AGENTS.md assumes this is available.
+- **Slash commands / skills** where this repo defines them: {{SKILLS}}.
+- `{{HOOKS_NOTE}}`
+
+**Blast radius:** anything in `.claude/` is *local developer configuration*. It
+does not run in CI, it does not run for a contributor who has not installed it,
+and it does not run for an agent on another harness. It substitutes for no CI
+gate. Where a rule must hold for everyone, it belongs in a gate, and AGENTS.md
+restates it by hand for the agents this configuration never reaches.
 
 ## Evergreen gotchas
 
-- Never bypass all hooks at once (`--no-verify` is banned). Use a scoped `SKIP=<gate>` with written justification.
-- Conventional commits only: `feat|fix|chore|refactor|docs|test`.
-- Every task records a doc delta (or an explicit "no docs delta" + one-line reason).
-- One task = one branch = one PR. Branch from `{{DEFAULT_BRANCH}}`; plan/doc changes other tasks depend on land first as their own small PR.
-- Agents may push branches and open PRs. **Agents never merge — the maintainer does.**
-- **Going public is maintainer-only, voluntary, unscheduled — never agentic.** Agents never change repo visibility or create public repos.
+{{GOTCHAS}}
+
+---
+
+*Nothing else belongs here.* If a rule applies to any agent that is not Claude
+Code, it belongs in [AGENTS.md](AGENTS.md) — this file is the one no other
+harness reads.

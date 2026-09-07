@@ -6,9 +6,14 @@
 
 ## Repo furniture every project gets
 
-- `CLAUDE.md` at root (~30 lines): onboarding sequence, context budget,
-  permission-prompt policy, evergreen gotchas (for Claude Code,
-  `runners/claude/CLAUDE.template.md`).
+- `AGENTS.md` at root: the onboarding home every agent reads regardless of
+  harness — role routing, session start, the rules this project declares, how
+  work is done, context budget, and the never-on-any-harness list
+  (`templates/AGENTS.template.md`).
+- **Optionally**, one entry file per harness in use — a pointer plus that
+  harness's delta, never a second copy (`runners/<harness>/`; for Claude Code,
+  `runners/claude/CLAUDE.template.md`). A project with one harness and no
+  harness-specific rules needs none of these.
 - `docs/IMPLEMENTATION.md`: living tracker — current phase, in
   progress, blocked, recently completed, open decisions
   (`templates/IMPLEMENTATION.skeleton.md`).

@@ -29,8 +29,9 @@ docs/
   dev/                contributor recipes, one per repeatable pattern
   risks.md            risk register (create when the first risk appears)
   plan/               process/documentation/quality-gates policies (installed
-                      at bootstrap), phases/ (one doc per phase), and
-                      archive/ (the shredded PROJECT-PLAN, immutable)
+                      at bootstrap), decisions.md (what the catalogue asked and
+                      what this project answered), phases/ (one doc per phase),
+                      and archive/ (the shredded PROJECT-PLAN, immutable)
 ```
 
 Modules/packages carry their own `README.md`
@@ -56,6 +57,22 @@ Each stream has a fixed home and a trigger. Fill it when the trigger fires
 1. **Every doc has exactly one home.** Content needed in two places is
    written once and linked from the other — never duplicated. (Trust
    assets and policy files are linked to, not restated.)
+
+   **The onboarding home is runner-agnostic.** `AGENTS.md` holds the content
+   every agent needs; a harness-specific entry file (`CLAUDE.md` and its
+   equivalents) is a **pointer plus a delta** — what is true for that harness
+   and absent or different elsewhere — with an explicit precedence rule saying
+   which wins on shared content. Two full copies drift, and the copy that
+   drifts is always the one a given agent does not read.
+
+   **Entry docs route by role before they route by content.** Some roles have
+   *contradictory* onboarding: an independent reviewer must **not** read the
+   tracker or the handover, because those carry the author's account and the
+   value of the pass is that the reviewer has not been told what to conclude.
+   So the role gate is the first thing in the file, before any instruction to
+   read anything else — including before "read the other entry file in full".
+   A reviewer routed through the author's onboarding on the way to its own
+   brief has already lost the property it was launched for.
 2. **Reference is doc-comment-first.** Public exports carry native doc
    comments (TSDoc / docstrings / rustdoc / DocC / godoc) as they are
    written — in-editor help now, the generated reference's source later.
