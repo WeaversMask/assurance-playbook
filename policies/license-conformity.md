@@ -12,6 +12,14 @@
    bootstrap with maintainer sign-off, then hold):
    `MIT, ISC, Apache-2.0, BSD-2-Clause, BSD-3-Clause, 0BSD, Unlicense,
    CC0-1.0, BlueOak-1.0.0, Python-2.0`.
+
+   **An allowlist entry may be scoped to a path or file type.** A licence can
+   be acceptable for one kind of artifact and not for another — `OFL-1.1` is
+   right for a font asset and wrong for a source dependency — and a single
+   global list forces the whole tree to the laxest entry that any one file
+   needed. A scoped entry records the licence, the scope it applies within,
+   and why the scope is the boundary. Unscoped remains the default: scope is
+   a deliberate narrowing, not a way to slip a licence past review.
 2. **Deny/flag by default:** `AGPL`, `GPL`, `LGPL` (as a *linked*
    dependency), `SSPL`, `Commons-Clause`, and any tool-specific restricted
    license (e.g. Semgrep-Rules-License). Weak copyleft (`MPL-2.0`) is not
@@ -28,9 +36,43 @@
 6. **Notices:** a `THIRD-PARTY-NOTICES` file is generated from the
    dependency tree and regenerated whenever the tree changes (CI-verified).
    License notices are never dropped, even for permissive licenses.
-7. **License file and manifest always agree** (e.g. `LICENSE` ↔
-   `package.json#license` / `Cargo.toml#license`). The copyright holder
-   string is a deliberate maintainer decision — see
+
+   **Its scope is an explicit decision, made at bootstrap and recorded.**
+   The whole resolved tree, direct dependencies only, runtime only, or none —
+   the honest default is the whole resolved tree, because that is what is
+   redistributed. Whichever is chosen, **derive the set from the lockfile
+   rather than from what is installed here**: packages constrained by
+   platform, architecture or an unselected extra resolve differently per
+   machine, so a walk of the installed directory silently omits packages the
+   project still ships. Generating fewer notices than the project
+   redistributes is the failure this decision exists to prevent, and it is
+   invisible from the machine that generated them.
+7. **A project licenses each asset class it ships, and says which is which.**
+   Code, prose and content, and binary or data assets are three different
+   things to license, and a repo that carries more than one of them rarely
+   wants one licence over all of it — permissive code alongside content the
+   maintainer does not want redistributed is the common case, not an edge
+   case. Each class that diverges gets **its own licence file**, named so the
+   boundary is legible (`LICENSE`, `LICENSE-content`, …), and the README
+   states which covers what. A single-class project keeps a single `LICENSE`
+   and is finished in one line — the invariant is that the answer is chosen,
+   not that it is plural.
+
+   **The licence file and the manifest always agree** for the class the
+   manifest describes (e.g. `LICENSE` ↔ `package.json#license` /
+   `Cargo.toml#license`). Most manifests can express exactly one licence, so
+   the manifest carries the **code** licence and the other classes live in
+   their own files; a manifest that silently claims the code licence covers
+   committed content is the failure this rule prevents.
+
+   **Third-party content the project does not own is not a licensing choice
+   at all** — it is somebody else's terms, and those terms bind whatever the
+   project's own licence says. Where the project ships or caches material it
+   did not author, the governing terms are recorded alongside the licence
+   decision, because they usually constrain the architecture — a caching
+   layer can be a licence question before it is a performance question.
+
+   The copyright holder string is a deliberate maintainer decision — see
    [identity-protection.md](identity-protection.md) for pseudonymous
    holders.
 
