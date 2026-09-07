@@ -76,6 +76,15 @@
    everyone — instead of a bypass whose only trace is a commit message.
    The cost is real and accepted: a broken or missing scanner blocks all
    commits and pushes until it is fixed. That is the gate working.
+   **The scan layers are never dormant.** A quality gate whose target does not
+   exist yet may declare an arming condition and report `DORMANT`
+   ([quality-gates.md](quality-gates.md) invariant 13). The scan layers may
+   not: a layer that has not been seen to fire is indistinguishable from a
+   layer that is not there, which is this invariant's whole subject. Where a
+   layer's prerequisite is a step the maintainer has not taken — the CI layer
+   before a remote exists — bootstrap is **incomplete** and the row stays open;
+   it does not close as dormant.
+
 4. **Scanner versions are pinned** — the local binary via an install script
    with a pinned version, CI via a pinned action/version — and bumped
    together in the same PR.
