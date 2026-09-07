@@ -118,6 +118,22 @@
     skippable gates, the set of paths a rule covers, the set of jobs that
     resolve the graph without building — assert that set.
 
+    **The cases come from what actually broke, not from what the author
+    imagines.** A suite written alongside the code inherits the code's blind
+    spots: it exercises the shapes the author had in mind, which are the shapes
+    already handled. Seed it from review findings and from real breakages, and
+    add the case *before* the fix, so the suite is a ratchet rather than a
+    snapshot of one session's imagination.
+
+    **And prove the suite can fail.** Break the gate deliberately and confirm the
+    suite goes red — a test that cannot fail is decoration for exactly the reason
+    a gate that cannot fail is. Two traps make this less obvious than it sounds:
+    a fixture can trip an *earlier* branch than the one it names and pass for the
+    wrong reason, and a fixture can be shaped so the assertion never applies at
+    all. Both are the observation rule from Phase 3 — *a block is not a pass; the
+    output must name the check under test* — so assert the message, not only the
+    exit code.
+
 ## Gate classes, and what each may bypass
 
 Four classes, and the bypass policy is a property of the class rather than of

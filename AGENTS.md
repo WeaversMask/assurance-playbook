@@ -49,16 +49,36 @@ below for the one exception.
 - **Agents never merge.** Branches and commits, yes; landing them is the
   maintainer's.
 
-## Self-application: exactly one thing
+## Self-application: exactly two things
 
-The skill exists in two copies — canonical here, installed where the harness
-loads it — and they drifted for a full release, leaving guidance here that the
-copy which actually runs did not have. `runners/claude/check-skill-sync.sh` fails
-when they disagree and is armed via `core.hooksPath=.githooks`.
+This repo does not run the playbook on itself. Two exceptions earned their place:
 
-That is the whole of it. Adding gates to this repo is a decision to make on
-purpose, not by accretion — and the deviation is recorded: `policies/quality-gates.md`
-invariant 11 wants a CI check, this is a hook, and a hook is not CI.
+1. **The skill-copy freshness check.** The two copies drifted for a full release,
+   leaving guidance here that the copy which actually runs did not have.
+   `runners/claude/check-skill-sync.sh`.
+2. **Regression suites for the executable gates** —
+   `reference/node-pnpm/test/gates.test.sh` and
+   `runners/claude/check-skill-sync.test.sh`. Invariant 14 says a gate that can
+   be silently narrowed owes a regression test; these two gates were broken by
+   their own fixes four times, once by a change that would have blocked the
+   first commit of every bootstrapped repo.
+
+Both are armed by `core.hooksPath=.githooks`, which runs all three on every
+commit here.
+
+**If you change either gate, add the case that would have caught the change you
+are making, before you make it.** Every case in those suites is one a review
+found, not one their author thought of — which is the only reason they catch
+anything. The author's own fixtures had been green through all four breakages.
+
+**And check the tests can still fail.** Break the gate deliberately and confirm
+the suite goes red. A case that passes for the wrong reason is a false pass, and
+that has happened three times here: twice a fixture tripped an earlier branch
+than the one it named, once a temp-directory path could not reach the condition
+being asserted. Assert the *message*, not only the exit code.
+
+Recorded deviation: `policies/quality-gates.md` invariant 11 wants a CI check for
+a duplicated file; this is a hook, and a hook is not CI.
 
 ## Working here
 

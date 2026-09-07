@@ -2,11 +2,22 @@
 # Pre-commit hook for the assurance playbook itself.
 #
 # SCOPE, deliberately narrow. This repo does NOT self-apply the playbook — it has
-# no remote, no CI and one maintainer, and full self-application would be ceremony
-# (brief §6.4). The one exception §6.4 names is the skill-copy freshness check,
-# which fixes a live credibility hole in the file that carries every other rule.
-# That is all this hook does. Adding gates here is a decision to make on purpose,
-# not by accretion.
+# no remote, no CI and one maintainer, and full self-application would be
+# ceremony. Two things earn their place, and both were earned rather than
+# assumed:
+#
+#   1. The skill-copy freshness check. The two copies drifted for a full
+#      release, leaving guidance here that the copy which actually runs lacked.
+#
+#   2. The gate regression suites. `quality-gates.md` invariant 14 says a gate
+#      that can be silently narrowed owes a regression test, and the two gates
+#      this repo ships as executable code were broken by their own fixes four
+#      times — once by a change that would have blocked the first commit of
+#      every bootstrapped repo. Every case in those suites is one a review
+#      found, not one their author thought of. Running them here is the only
+#      thing standing between a plausible edit and a fifth round of that.
+#
+# Adding anything else is a decision to make on purpose, not by accretion.
 #
 # ACTIVATION: `git config core.hooksPath .githooks`. Committing this file does not
 # arm it — a hook in the tree that nobody configured is exactly the kind of
@@ -27,3 +38,5 @@ set -e
 repo_root="$(git rev-parse --show-toplevel)"
 
 sh "$repo_root/runners/claude/check-skill-sync.sh"
+sh "$repo_root/runners/claude/check-skill-sync.test.sh"
+sh "$repo_root/reference/node-pnpm/test/gates.test.sh"
