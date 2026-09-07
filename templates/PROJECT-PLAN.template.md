@@ -1,7 +1,8 @@
 <!--
   PROJECT-PLAN template — the comprehensive up-front implementation document,
   written by the maintainer or an agent at project start, BEFORE or alongside
-  /bootstrap-assurance.
+  your runner's bootstrap entry point (for Claude Code,
+  `/bootstrap-assurance`).
 
   How this document fits the workflow (read before writing a word):
 
@@ -219,6 +220,28 @@ _Exit criteria: …_
 | Risk / question | Impact | Mitigation / recommendation | Owner |
 | --------------- | ------ | --------------------------- | ----- |
 
+## 13a. What this plan pre-answers in the decision catalogue
+
+`BOOTSTRAP.md` Phase 0 tells the agent to **verify against this plan rather than
+re-ask**. That only works if it knows which section answers which entry, so the
+mapping is here rather than inferred:
+
+| Catalogue entry | Answered by |
+| --- | --- |
+| Stack (Phase 0 intake) | the header, §2 |
+| T0 assurance tier | §10 security & privacy posture, §13 risks — *how does wrong output here surface?* |
+| A1 pseudonymous · A3 visibility | §10 |
+| B1 licence per asset class · B2 allowlist | §4 core libraries & external tools |
+| C1 supply-chain intake | §4 |
+| D1 what this project forbids | §8 cross-cutting concerns, §10 |
+| E1 the oracle, per module · E2 coverage floors | §9 testing strategy |
+| D2 module boundaries | §2 architecture — its module table is the source of truth |
+| F4 review tier | §11 phase roadmap |
+
+Entries this plan does **not** answer are asked normally. A section that answers
+one only partially is a section to finish, not a reason to skip the question:
+"the plan sort of covers it" is how an unrecorded default gets in.
+
 ## 14. Shred map (executed once, at agreement)
 
 <!-- CONTRACT: this is the handoff. When the maintainer marks the plan
@@ -235,7 +258,7 @@ _Exit criteria: …_
 | §4 | dependency intake: run the license gate against the planned tree; exceptions → the ledger; externals → README prerequisites | before any install |
 | §5, §11 | `docs/plan/phases/phase-NN-<name>.md` (one file per phase) + `docs/IMPLEMENTATION.md` Up-Next | tasks verbatim with IDs |
 | §7 | surface docs + doc-comment obligations | stability markers kept |
-| §8, §9 | `CLAUDE.md` conventions + coverage config | rules, not prose |
+| §8, §9 | `AGENTS.md` conventions + coverage config | rules, not prose |
 | §10 | bootstrap Phase 0 inputs (identity, floors) | confirm, don't re-ask |
 | §12 | `docs/adr/0001…` via ADR template | one PR per batch is fine |
 | §13 | `docs/risks.md` + tracker Open Decisions | recommendations included |

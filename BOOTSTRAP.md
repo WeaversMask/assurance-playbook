@@ -28,41 +28,92 @@ marked **HUMAN STOP** and sit where they are actually needed, not
 collected at the end: an agent that runs past one produces an unprovable
 install.
 
-## Phase 0 — Maintainer inputs (STOP and ask; do not guess)
+## Phase 0 — What this project decides (STOP and ask; do not guess)
 
 > If the maintainer supplies a project plan written from
-> `templates/PROJECT-PLAN.template.md`, most of these inputs are already
-> answered (stack in its header, dependencies/licenses in §4, coverage in
-> §9, identity in §10) — **verify against the plan rather than re-ask**,
-> and let its shred map (§14) drive what Phase 1's furniture is seeded
-> with. Only genuinely missing or ambiguous items go back to the
-> maintainer.
+> `templates/PROJECT-PLAN.template.md`, it pre-answers several of these —
+> **verify against the plan rather than re-ask**, and let its shred map drive
+> what Phase 1's furniture is seeded with. The plan's catalogue-id mapping says
+> which entry each section answers. Only genuinely missing or ambiguous items go
+> back to the maintainer.
 
-Collect before touching anything:
+Four things are collected here, in full, before anything else. The remaining
+eighteen decisions live in [`decisions/catalogue.md`](decisions/catalogue.md) and
+are worked from step 5.
+
+**Say this before the first question.** Otherwise the check that makes declining
+safe reads as a punishment for declining:
+
+> Anything you decline gets one row naming what brings it back. Decline nothing
+> and the table is empty and costs you nothing. Decline something and a short
+> check makes sure that row cannot be quietly forgotten. That check is the reason
+> you are allowed to decline at all.
 
 1. **Project name** and short description.
-2. **Stack** (language, package manager, test runner) — detect from the
-   repo if it exists, confirm with the maintainer.
-3. **Public identity decision** ([identity-protection.md](policies/identity-protection.md)
-   §8): reuse the existing persona or a fresh one? Which
-   name + noreply email will this repo commit as?
-4. **Is this project pseudonymous at all?** Decide now and record the
-   answer in the project's CLAUDE.md. It is effectively irreversible
-   after the first PR (invariant 7a): `refs/pull/*` survive history
-   rewrites, so a later change of mind means migrating to a fresh repo
-   and discarding every PR and review thread. A "no" here is legitimate —
-   it selects the `assurance:no-local-identity-rules` opt-out in Phase 2
-   — but it must be chosen, not defaulted into.
-5. **Project license** and copyright holder string, and any adjustments to
-   the starting SPDX allowlist
-   ([license-conformity.md](policies/license-conformity.md) §1).
-6. **Coverage floors** (default 85% line / 80% branch) and any gate the
-   maintainer explicitly waives at bootstrap (record the waiver).
 
-**Tell the maintainer now** that a pseudonymous project needs a
-hand-written `.gitleaks.local.toml` before the gates can be proven (the
-HUMAN STOP ending Phase 2). Flagging it here means it is ready when the
-procedure reaches it, instead of stalling the run.
+2. **Stack** — language, package manager, test runner. Detect from the repo if it
+   exists, confirm with the maintainer. This is needed here rather than in the
+   catalogue because most of the catalogue's applicability tests read it.
+
+3. **The assurance tier (T0).** Ask: *"If this code were wrong tomorrow, how
+   would you find out, and how long would it take?"* — (1) it crashes or is
+   obviously broken; (2) someone notices eventually; (3) it looks right, is
+   wrong, and gets acted on. Answerable per module, which is usually the honest
+   answer. Follow up with *"does anything downstream act on the output?"* — that
+   is what actually separates 1 from 3.
+
+   The dial is **detection latency, not severity.**
+
+   Then apply the escalators, because this is a self-assessment by someone who
+   wants to start building. `tier = max(self-assessment, floor)`:
+
+   | Fact | Floor |
+   | --- | --- |
+   | The repo will be public | ≥ 2 |
+   | It holds data it cannot regenerate | ≥ 2 |
+   | More than one person commits | ≥ 2 |
+   | Its output is consumed by another system | **3** |
+
+   Going lower is permitted and becomes a recorded deviation with a reason.
+   Project tier is the maximum across modules and decides which entries are
+   asked; per-module tier scales values inside the answers.
+
+   **The tier never scales the safety class.** Secret scanning, identity and
+   provenance are identical at every tier.
+
+4. **Is this project pseudonymous? (A1)** Decide now and record it in the
+   project's `AGENTS.md`. It is **effectively irreversible after the first PR**:
+   `refs/pull/*` survive history rewrites, so a later change of mind means
+   migrating to a fresh repo and discarding every PR, review thread and issue
+   link. Deciding at `git init` costs nothing; deciding after PR #1 may cost the
+   history. A "no" is legitimate — it selects the
+   `assurance:no-local-identity-rules` opt-out marker placed in Phase 2.1 — but
+   it must be chosen, not defaulted into.
+
+5. **Work [`decisions/catalogue.md`](decisions/catalogue.md) in order**, asking
+   each entry whose tier and applicability admit it, and **record every outcome
+   before leaving Phase 0**. Three outcomes, all of which write something:
+
+   - **asked** → the answer;
+   - **announced and recorded** → `default — announced, not asked`, for a default
+     with no realistic alternative here. An announced default is not a recorded
+     decision unless it is written down;
+   - **not applicable and recorded** → `n/a — <reason>` plus a trigger, for a
+     *Phase-0-evaluable* test that fails.
+
+   Entries in the **deferred** class produce no row — they attach to a
+   documentation capture trigger and are asked when the shape appears. Collect
+   them in a short "Deferred" list.
+
+   Answers land in three homes: defaults in `docs/plan/decisions.md`, divergences
+   in an ADR, and **anything carrying a trigger** — declines, `n/a` rows, and the
+   tier itself — in the tracker's Open decisions table, which is the one artifact
+   the Phase 2.10 check reads.
+
+**Tell the maintainer now** that a pseudonymous project needs a hand-written
+`.gitleaks.local.toml` before the gates can be proven (the HUMAN STOP ending
+Phase 2). Flagging it here means it is ready when the procedure reaches it,
+instead of stalling the run.
 
 ## Phase 1 — Repo foundation
 
@@ -103,9 +154,33 @@ procedure reaches it, instead of stalling the run.
 
 ## Phase 2 — Gates, in dependency order
 
-For each gate: choose the stack-native mechanism *against the policy's
-invariants*, wire it locally (hook) **and** in CI, then record it in the
+For each gate: choose the stack-native mechanism by **scoring candidates against
+[`decisions/mechanism-rubric.md`](decisions/mechanism-rubric.md)**, out loud, in
+the bootstrap record — the scoring is the evidence a mechanism was chosen rather
+than recognised. Then wire it locally (hook) **and** in CI, and record it in the
 verification matrix (Phase 3).
+
+**Which of the items below a project installs depends on its tier**, except the
+safety class, which does not scale:
+
+| Item | Class | Installed at |
+| --- | --- | --- |
+| 1, 3 secret-scanning config and layers | **safety** | every tier |
+| 4 identity gates | **safety** | every tier (A1 "no" selects the opt-out) |
+| 2 hook manager | prerequisite | every tier |
+| 5 commit conventions | quality | every tier |
+| 6 lint / format / static check | quality | every tier, where the stack has them |
+| 6b tests + coverage floors | quality | **tier 2+** |
+| 7 licence file + allowlist check | quality | every tier, where B2 applies |
+| 7b full-tree licence gate, notices, supply-chain controls | quality | **tier 2+** |
+| 8 review-evidence gate | quality | **tier 2+**, and only where a remote exists |
+| 9 freshness check per bootstrap-time generator | quality | every tier, where a generator exists |
+| 10 decision-trigger check | meta | **every tier** |
+| 11 budget gates | budget | **tier 3** |
+
+A tier-1 project installs no coverage floor, no full-tree licence gate and no
+review gate — and exactly the same three secret-scan layers and identity gates as
+a tier-3 one.
 
 The order below is a dependency order, not a preference. In particular
 the scanner **config** lands before the hooks that read it: a hook whose
@@ -147,6 +222,22 @@ fresh install is the worst possible time to debug a misattributed error.
    doesn't).
 8. **Review-evidence CI gate** ([process.md](policies/process.md)): fail
    non-draft PRs lacking the `## Independent review` block/packet.
+10. **The decision-trigger check** ([process.md](policies/process.md), "Open
+    decisions"): fails the build when an open row's trigger has already passed.
+    Fail-closed on a missing section, an unparseable table, zero rows, an
+    unreadable current phase, and a trigger naming an id that resolves to
+    nothing — a typo is a trigger that never fires. Hook **and** CI, like every
+    other gate here; where no remote exists yet, the CI half is an open
+    obligation completed at Phase 4, not a silent omission.
+
+    **This is not optional at any tier.** Every decline, every `n/a` row and the
+    tier decision itself carry triggers, and without something reading them
+    "we'll consider it later" is where deferred quality goes to die — which
+    would make the advisor strictly worse than the installer it replaced.
+    `reference/node-pnpm/scripts/check-decisions.mjs` is a worked
+    implementation; the tracker needs its `Trigger` column
+    (`templates/IMPLEMENTATION.skeleton.md`).
+
 9. **Freshness checks ship with their generators.** Anything installed
    above that generates a committed file (notices, generated configs or
    docs) gets its `--check`-style CI verification in this same phase
@@ -173,8 +264,26 @@ hooks reject `SKIP=gitleaks` rather than honouring it. Waiting for the
 maintainer is the only way forward, which is why Phase 0 warns them it is
 coming.
 
-Once the file exists, commit Phase 2's work. That commit is the first
-real exercise of the gates.
+**The block tells them what to write, in the terminal.** The hook's message
+prints the required shape — which rules must exist, the `[extend]` line — and the
+self-test command. It does not print a copy of the example, which would be a
+second copy with nothing cross-checking it. `templates/gitleaks.local.example.toml`
+is the fuller reference with placeholders.
+
+**The file must be armed, not merely present.** The hook rejects three unarmed
+states: no rules at all (an empty file, or one holding only the `[extend]`
+stanza), the example's placeholder markers, and the example's placeholder values
+with the markers deleted. What none of them catches is a rule filled in with a
+typo — armed against nobody and identical in appearance to a working one. That is
+what the **self-test** is for, and why it checks the reported **rule id for each
+rule** rather than counting hits: the address and domain rules overlap, so four
+hits can come from two working rules and two dead ones.
+
+Two of the Phase 3A rows are exercised here, by the maintainer, while the file is
+still in its unarmed states — an agent never creates, reads, or asks about it.
+
+Once the file exists and the self-test passes, commit Phase 2's work. That commit
+is the first real exercise of the gates.
 
 ## Phase 3 — Prove every gate by breaking it (mandatory)
 
@@ -208,7 +317,24 @@ the result in a **verification matrix** in the bootstrap PR description.
 | Lint / types      | Introduce a violation, run root gate                   | non-zero exit      |                         |
 | Coverage          | Add uncovered logic, run coverage gate                 | floor breach fails |                         |
 | License           | Add a GPL-licensed dev dependency                      | gate blocks, names the package | |
+| Placeholder state | **Maintainer only** — before filling `.gitleaks.local.toml` in, attempt a commit | pre-commit blocks, names line numbers only | |
+| Empty local config | **Maintainer only** — a `.gitleaks.local.toml` with no rules | pre-commit blocks, says it defines no rules | |
+| Decision triggers | Add an open row whose trigger has already passed  | check blocks, names the row | |
 | Fail-closed paths | Remove/rename the scanner binary, attempt commit       | block with instructions | |
+
+**Tier gates which rows are required.** Every tier proves the safety set — both
+secret rows, bypass refused, both identity rows, local patterns, committed
+config, placeholder state, empty local config, commit message, decision triggers,
+fail-closed paths. Lint/types, coverage and licence rows are required at tier 2+.
+The 3B rows below are gated on **whether a remote exists**, not on tier — a
+project without one has not finished bootstrap.
+
+**The two rows marked maintainer-only are exercised by the maintainer, not the
+agent.** Proving them requires `.gitleaks.local.toml` to exist in an unarmed
+state, and an agent never creates, reads, or asks about that file. The maintainer
+is already writing it at the HUMAN STOP; those are the states it starts in. The
+rejection output is content-free — file and line numbers, never a matching line —
+which is what makes pasting it into this matrix safe.
 
 **The push rows need no real remote.** Push to a throwaway local bare repo
 (`git init --bare /tmp/probe.git`) — the pre-push hook receives the same
@@ -257,10 +383,33 @@ and both were live findings (2026-08-15):
   bootstrap PR itself is opened as a draft, so the very first PR the gate
   judges is the one that exercises this path.
 
-Every row gets: pass/fail, the observed output, and a one-line note. **A
-row that cannot be made to fail means the gate is not installed, whatever
-the config says** — and a row whose observed output names a different gate
-than the one under test is also a fail, not a pass.
+Every row gets a **state**, the observed output, and a one-line note.
+
+| State | Meaning |
+| --- | --- |
+| **pass** | seen to fail on its own terms; observed output pasted |
+| **fail** | could not be made to fail — the gate is not installed, whatever the config says. A row whose output names a *different* gate is also a fail |
+| **dormant** | a **quality or budget** gate whose prerequisite does not exist yet. Names its arming condition, prints `DORMANT` on every run, and closes when the condition appears |
+| **deferred** | its prerequisite is a step the maintainer has not taken (a remote). Not a state a project ships in — bootstrap is incomplete until it closes |
+
+**DORMANT is fenced.** A **safety**-class gate that cannot be armed **blocks
+bootstrap completion**; it never earns a dormant row. Without that fence the
+whole 3B block below would be dormant-able on a project with no remote, and a
+scan layer that never fires is the failure
+[secret-scanning.md](policies/secret-scanning.md) invariant 3 exists to prevent —
+whatever the reason it never fired.
+
+**A dormant row's transition is proven, not assumed.** A wrapper that prints
+`DORMANT` forever satisfies a check that only looks for the marker. Prove it with
+a temporary fixture: create the prerequisite, confirm the gate arms, break it
+deliberately, observe the failure, remove the fixture, confirm it returns to
+`DORMANT`. Record that sequence in the row.
+
+**The matrix is standing evidence, not a bootstrap deliverable.** Open a "Gates
+installed after bootstrap" section when you create it. A gate added in month
+three is proven the same way and recorded in the same file, or the claim that
+every gate here has been seen to fail quietly stops being true a week after
+Phase 3.
 
 **A gate must be seen to fail on its own terms.** "The job went red" is not
 the assertion; "the job went red *for the reason this gate claims to
