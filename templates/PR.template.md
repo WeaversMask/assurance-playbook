@@ -36,8 +36,11 @@ Brief notes on design choices. Link to relevant ADRs.
 Specific files or decisions that benefit from human attention.
 
 <!--
-Independent review evidence — REQUIRED. The CI `Independent review pass` job
-fails any non-draft PR that lacks it. The heading is deliberately NOT
+Independent review evidence — REQUIRED where a review gate is installed. The
+CI `Independent review pass` job fails any non-draft PR that lacks it. A
+project that recorded a decision not to install that gate deletes this block
+at bootstrap rather than carrying a template that asks for evidence nothing
+checks. The heading is deliberately NOT
 pre-printed below: the gate greps for it, so an unedited template must fail,
 never pass vacuously. Add the evidence yourself, one of:
 
@@ -48,7 +51,9 @@ never pass vacuously. Add the evidence yourself, one of:
   separate PR comment whose first line is the H2 heading
   "Independent review packet" (two #'s).
 
-Reviewer must be a fresh-context agent; prefer a model family different from
-the author's (escalated + cross-family for domain core / adapters / releases).
+Reviewer must be a fresh-context agent. Whether to require a different model
+family is a decision this project records at bootstrap rather than a default —
+name the reviewer and the runner in the block below, so "whichever was handy"
+is visible when it happens.
 Brief: docs/plan/process.md §Independent review.
 -->

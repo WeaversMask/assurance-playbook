@@ -33,12 +33,24 @@
 
 ## Open decisions
 
-> Escalations awaiting the maintainer. Each entry: the question, the
-> agent's recommendation, date raised. Reviewed before every merge —
-> answered or consciously re-dated.
+> Escalations awaiting the maintainer, and every recommendation this project
+> declined. Each entry: the question, the recommendation, a **trigger**, and the
+> date raised.
+>
+> **Every open row carries a trigger**, and it is exactly one of: a **task or
+> group id** (`W1`, `P1-17`), a **phase boundary** (`P2-start`, `P3-exit`), an
+> **ISO date**, or **`standing`** — deliberately no trigger, revisited on demand.
+> A closed row needs none.
+>
+> This used to read "reviewed before every merge — answered or consciously
+> re-dated", which was a convention with nothing behind it: two rows walked
+> straight past triggers they had set themselves and both were found by hand.
+> Elapsed time is not the measure; merges are. `{{DECISION_CHECK}}` fails the
+> build when a trigger has passed, which is what makes declining a recommendation
+> safe rather than a way to lose it.
 
-| ID  | Decision needed | Recommendation | Raised |
-| --- | --------------- | -------------- | ------ |
+| ID  | Decision needed | Recommendation | Trigger | Raised |
+| --- | --------------- | -------------- | ------- | ------ |
 
 ## Metrics snapshot
 
