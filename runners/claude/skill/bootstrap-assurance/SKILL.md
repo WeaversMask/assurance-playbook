@@ -28,13 +28,27 @@ copy source).
    its **"The ordering rule"** preamble — then the six files in
    `policies/`. BOOTSTRAP.md is the installation order; follow it phase by
    phase in the **target project's repo**.
-2. **Phase 0 first, always:** collect the maintainer inputs (stack,
-   identity decision, pseudonymity yes/no, license/allowlist, coverage
-   floors) via questions before writing anything. Do not guess an identity
-   and do not reuse one from another project without being told to. Say up
+2. **Phase 0 first, always.** Four things inline — project name, stack, the
+   **assurance tier**, and the pseudonymity decision — then work
+   `decisions/catalogue.md` in order, asking each entry whose tier and
+   applicability admit it.
+
+   **State the cost of declining before the first question**, not after the
+   first decline: anything declined gets one row naming what brings it back;
+   decline nothing and the table is empty and costs nothing; that check is why
+   declining is allowed at all. Said afterwards it reads as a penalty.
+
+   **Record every outcome** — asked, `default — announced, not asked`, or
+   `n/a — <reason>` with a trigger. An announced default is not a recorded
+   decision unless it is written down. Deferred entries get a list line, not a
+   row.
+
+   The tier question is *"if this code were wrong tomorrow, how would you find
+   out, and how long would it take?"*, then the escalators. It is **detection
+   latency, not severity**, and it never scales the safety class. Do not guess
+   an identity or reuse one from another project without being told to. Say up
    front that a pseudonymous project needs a hand-written
-   `.gitleaks.local.toml` before the gates can be proven, so it is ready
-   when the run reaches it.
+   `.gitleaks.local.toml` before the gates can be proven.
 3. **The pseudonymity answer is effectively irreversible after the first
    PR** (invariant 7a): `refs/pull/*` survive history rewrites, so a later
    change of mind means a fresh repo and the loss of every PR and review
@@ -52,11 +66,17 @@ copy source).
    the thing that disabled the check.
 4. **Commit the Phase 1 foundation before arming any gate.** That is the
    last unhooked commit; everything after it is committed through the
-   gates. Derive each gate from the policy invariants using the target
-   stack's native tooling, and consult the reference to see what
-   fail-closed plumbing a complete instantiation has — except the identity
-   gates, which the reference does not implement (build them from the
-   invariant 2 spec).
+   gates. **Score each gate's mechanism against `decisions/mechanism-rubric.md`,
+   out loud** — seven criteria, a pass rule, and a probe whose negative result
+   is recorded as `probe X returned Y on date Z`, never as a fact about the
+   world. A failing must-pass criterion means wrap, deviate, or reject; for a
+   safety-class gate the only option is reject. Consult the reference for
+   fail-closed plumbing — except the identity gates, which it does not
+   implement (build them from the invariant 2 spec).
+
+   **Which gates install depends on the tier**, except the safety class, which
+   does not scale. **Item 10 — the decision-trigger check — installs at every
+   tier**, because every decline and the tier itself carry triggers.
 5. **Two HUMAN STOPs, and they are not both at the end.** Present each as
    a checklist item and stop there:
    - **End of Phase 2 — the local personal-identifier patterns file.**
@@ -69,7 +89,14 @@ copy source).
      `SKIP=gitleaks` rather than honouring it. Waiting is the only move.
    - **Phase 4.1 — creating the remote.** Maintainer-only; it unblocks the
      CI rows in Phase 3B, which are finished after it.
-6. **Phase 3 is mandatory, and a block is not a pass.** Prove every
+6. **Phase 3 is mandatory, and a block is not a pass.** Rows have four states:
+   pass, fail, **dormant** (a quality or budget gate whose prerequisite does not
+   exist yet — names its arming condition, prints DORMANT every run, and its
+   transition is proven with a temporary fixture, never assumed), and deferred.
+   **A safety-class gate never earns a dormant row** — if it cannot be armed,
+   bootstrap is incomplete. The two local-config rejection rows are exercised by
+   the **maintainer**, not you: they need the file to exist unarmed.
+ Prove every
    installed gate by deliberately breaking it, and record the matrix with
    the **observed failure output**. Hooks fail fast and chain, so one
    gate's block masks every gate behind it — a missing local config

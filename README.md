@@ -12,16 +12,36 @@ language or ecosystem.
 
 ## The design
 
-Each assurance workflow is split into **policy** (what must always be true,
-and what evidence proves it — stack-agnostic) and **mechanism** (how one
-particular stack enforces it). Policies live in `policies/` and are the
-normative content. Mechanisms are re-derived per project by mapping each
-invariant onto the target stack's native tooling; `reference/node-pnpm/`
-holds one complete, battle-tested instantiation as a worked example.
+Three kinds of content, and keeping them apart is what makes this portable:
+
+- **Policy** — what must always be true, and what evidence proves it.
+  Stack-agnostic, normative, in `policies/`.
+- **Decisions** — what a project must *choose*, each with a default, the
+  alternatives, a test for which applies, and what happens when the answer is
+  "not now". In `decisions/`.
+- **Mechanism** — how one stack enforces a policy. Re-derived per project by
+  scoring candidates against `decisions/mechanism-rubric.md`;
+  `reference/node-pnpm/` is one complete instantiation, as an exhibit.
+
+The policy says dependencies carry acceptable licences. The catalogue asks which
+licences, scoped how, with notices covering what. The invariant does not change
+per project; the answer always does.
+
+**It advises, and it still installs.** The advisor is Phase 0: an interview over
+22 catalogue entries, sized by how silently the project fails. Its record is what
+`BOOTSTRAP.md` then executes against, so a project set up through the questions
+ends up as genuinely gated as one set up through the old defaults.
 
 A gate that was never seen to fail is decoration. The bootstrap procedure
-requires **proving every gate by deliberately breaking it** before the
-project is considered protected.
+requires **proving every gate by deliberately breaking it** before the project
+is considered protected.
+
+**And recommending is not enforcing**, which is the tension an advisor has to
+resolve: advice decays. So a declined recommendation becomes a tracked row naming
+the event that brings it back, and a check fails the build when that event has
+passed. Decline nothing and the table is empty and costs nothing — the cost lands
+only on the debt actually taken on. That check is why declining is allowed at
+all.
 
 ## Layout
 
@@ -34,19 +54,22 @@ project is considered protected.
 | `policies/identity-protection.md` | Pseudonymous identity: declared, gate-verified, leak-scanned                                                                              |
 | `policies/process.md`       | Agentic execution: onboarding, context budget, review tiers, handover rotation                                                                  |
 | `policies/documentation.md` | Documentation structure: capture streams, homes, triggers, per-task delta, doc-comment-first reference                                          |
-| `reference/node-pnpm/`      | Argus's real hooks, CI, and scripts — a worked example, not a copy source                                                                       |
+| `decisions/catalogue.md`    | The 22 questions a project answers at Phase 0 — default, alternatives, how to tell which applies, what each branch costs, and where the answer is recorded |
+| `decisions/mechanism-rubric.md` | Seven criteria for scoring a mechanism the playbook has never heard of, with a pass rule and a worked example. Replaces the tool table that used to rot here |
+| `reference/node-pnpm/`      | Real hooks, CI, and scripts — a worked example, not a copy source                                                                               |
+| `runners/`                  | Harness-specific furniture, installed only for the harness a project names. `AGENTS.md` is the onboarding home for every agent regardless        |
 | `templates/`                | Genericized starting files: project-plan template, CLAUDE.md, tracker, handover/task/PR/ADR templates, go-public checklist, local gitleaks patterns example |
 | `runners/`                  | Runner-specific furniture, installed only for the harness a project names. `runners/claude/` holds the skill (canonical copy; installed at `~/.claude/skills/bootstrap-assurance/`), the harness entry-file template, and the sync check |
 
 ## Using it
 
-**Human quick start:** optionally write the up-front design first from
-`templates/PROJECT-PLAN.template.md` (it pre-answers most bootstrap
-questions and shreds into the repo's docs). Then create the new project
-repo (fresh `git init` — never a fork of a private repo) and in a Claude
-Code session inside it run `/bootstrap-assurance`. The skill walks
-BOOTSTRAP.md end to end and stops at the steps only you can do (identity
-decision, local patterns file, remote creation).
+**Quick start:** optionally write the up-front design first from
+`templates/PROJECT-PLAN.template.md` — it pre-answers several catalogue entries
+(§13a maps which) and shreds into the repo's docs. Then create the new project
+repo (fresh `git init` — never a fork of a private repo) and run the procedure
+inside it: **any agent can follow `BOOTSTRAP.md` directly**, and Claude Code has
+`/bootstrap-assurance`, which walks it end to end and stops at the steps only you
+can do (the local patterns file, remote creation).
 
 **Manual:** follow [BOOTSTRAP.md](BOOTSTRAP.md) yourself; it is written to be
 executable by either a human or an agent.

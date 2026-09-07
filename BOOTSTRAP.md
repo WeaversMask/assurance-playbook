@@ -127,7 +127,7 @@ instead of stalling the run.
    local tool binaries.
 4. `LICENSE` + manifest license field, agreeing with each other.
 5. Process furniture from `templates/`: `AGENTS.md` (from
-   `AGENTS.template.md`) as the onboarding home every agent reads, plus — only
+   `templates/AGENTS.template.md`) as the onboarding home every agent reads, plus — only
    for the harness(es) named in Phase 0 — that harness's entry file as a
    pointer plus delta (for Claude Code, `CLAUDE.md` from
    `runners/claude/CLAUDE.template.md`), placeholders filled — including the pseudonymity
@@ -440,9 +440,21 @@ Then finish **Phase 3B** against it.
 
 ## Phase 5 — Record
 
+- **Write `docs/plan/BOOTSTRAP-SUMMARY.md`** from
+  `templates/BOOTSTRAP-SUMMARY.template.md` and link it from the PR — the file
+  is the home, the PR points at it. Sections scale with tier: what this project
+  is and why that tier, every decision and its outcome, the gates **with what
+  each does not catch**, and the working loop. From tier 2 it also carries what
+  the assurance costs per commit, push and PR, what is still open, and what
+  moving tier would change.
+
+  The blind-spot column is the load-bearing one. Without it a list of installed
+  gates reads as coverage, and a summary is exactly where that misreading
+  happens.
+
 - Bootstrap PR includes: the completed verification matrix (with observed
-  output), recorded deviations (invariants not natively satisfiable, with
-  reasons), and the identity/allowlist decisions from Phase 0.
+  output and every row's state), recorded deviations (invariants not natively
+  satisfiable, with reasons), and the decision record from Phase 0.
 - **Open the bootstrap PR as a draft.** It is the first PR judged by the
   review-evidence gate installed in Phase 2.8, which passes drafts
   trivially and fails ready PRs with no review evidence. Take it out of

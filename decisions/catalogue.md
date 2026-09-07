@@ -56,7 +56,7 @@ changes"* — no new mechanism.
 more, which gates Phase 2 installs, and how many Phase 3 rows must be proven.
 **It never scales the safety class.**
 
-**Records as** a row in the tracker's Open decisions table — not `decisions.md`,
+**Records as** a row in the tracker's Open decisions table — not `docs/plan/decisions.md`,
 so the trigger check reads it. Trigger: an **ISO date** at tier 1 (no phases
 exist yet) or a **phase boundary** at tier 2+.
 
@@ -86,7 +86,7 @@ cost of being wrong is asymmetric.
 can land, and identity gates install at every tier · no ⇒ the marker goes in the
 committed config as a standalone comment line, and never as prose mentioning it.
 **Probe** none — a judgement.
-**Records as** `AGENTS.md` plus a `decisions.md` line.
+**Records as** `AGENTS.md` plus a `docs/plan/decisions.md` line.
 **Blind spot** provider web-UI merge commits are stamped with the account's
 *profile display name*, not the noreply email. Keep the profile name
 pseudonymous too, or this decision leaks through a channel it does not cover.
@@ -100,7 +100,7 @@ you, but to each other. Would that linkage matter if any one of them were
 deanonymised?
 **Consequences** shared ⇒ one reputation, one blast radius · fresh ⇒ more
 bookkeeping, independent failure.
-**Records as** `decisions.md`; the identity itself goes in `AGENTS.md`.
+**Records as** `docs/plan/decisions.md`; the identity itself goes in `AGENTS.md`.
 **Blind spot** tooling fingerprints link projects too. A distinctive gate set is
 itself a signature.
 
@@ -113,7 +113,7 @@ sets the escalator in T0 and decides whether the go-public checklist is live.
 **Consequences** ever-public ⇒ tier floor ≥ 2, history must be clean from birth,
 and the go-public checklist applies · public from day one ⇒ everything above,
 immediately.
-**Records as** `decisions.md`.
+**Records as** `docs/plan/decisions.md`.
 **Blind spot** "private forever" is a decision that gets revisited by
 circumstance rather than by intent, which is why the tier row is re-evaluated on
 its own trigger.
@@ -138,7 +138,7 @@ follows from A1/A2 and is recorded on this row rather than asked separately.
 **Third-party material you ship but do not own is not a licensing choice at
 all** — those terms bind whatever you pick, and they often constrain the
 architecture. A cache can be a licence question before it is a performance one.
-**Records as** ADR if not the default; `decisions.md` if it is.
+**Records as** ADR if not the default; `docs/plan/decisions.md` if it is.
 **Blind spot** a licence file says what you grant. It says nothing about whether
 you had the right to grant it.
 
@@ -152,7 +152,7 @@ refuses. The list you need is usually the default plus nothing.
 block an existing dependency, which is a finding rather than a nuisance.
 **Probe** the licence gate itself, scored against the rubric — see
 [mechanism-rubric.md](mechanism-rubric.md) for a worked example.
-**Records as** `decisions.md`, or an ADR for any addition.
+**Records as** `docs/plan/decisions.md`, or an ADR for any addition.
 **Blind spot** the allowlist governs *declared* licences. It cannot see licence
 text that disagrees with the declaration, or code vendored inside a package.
 
@@ -202,7 +202,7 @@ typically caught and yanked; urgent patches use a scoped, same-PR-removed
 exclusion with the advisory cited · script denial ⇒ some packages need an
 explicit reviewed allow, and the ledger entry *is* the review record.
 **Probe** the package manager's own help output — recorded as a dated result.
-**Records as** `decisions.md`, or a deviation if unsupported.
+**Records as** `docs/plan/decisions.md`, or a deviation if unsupported.
 **Blind spot** neither control looks at what the code does. A package that waits
 four days is not thereby safe.
 
@@ -251,7 +251,7 @@ generated configs, generated docs, compiled content.
 **Consequences** Phase 2 already covers bootstrap-time generators unconditionally.
 This entry exists so the obligation does not lapse the moment bootstrap ends —
 "add the check later" is the follow-up that does not happen.
-**Records as** the check itself; a `decisions.md` line only if the output is
+**Records as** the check itself; a `docs/plan/decisions.md` line only if the output is
 deliberately gitignored instead, which owes no check.
 **Blind spot** a `--check` mode written by the same hand as the generator shares
 its blind spots. It catches staleness, not wrongness.
@@ -277,7 +277,7 @@ answer to a red is "update the snapshot" — a test that cannot fail on purpose.
 **Consequences** every fixture value declares `source` or `chosen`, and a loader
 refuses a `chosen` value in an expected position
 (`policies/quality-gates.md` invariant 12).
-**Records as** ADR where a module's oracle is non-obvious; `decisions.md`
+**Records as** ADR where a module's oracle is non-obvious; `docs/plan/decisions.md`
 otherwise.
 **Blind spot** the gate checks that a declaration exists and is consistent, never
 that it is *true*. A fixture mislabelled `source` passes. That is a review
@@ -338,7 +338,7 @@ layer, and its blast radius says so.
 **Consequences** hooks chain and fail fast, so their **order is correctness**;
 CI wants the opposite — independent jobs, no dependency edges, so a failure names
 its own gate.
-**Records as** `decisions.md`; deviations as rows.
+**Records as** `docs/plan/decisions.md`; deviations as rows.
 **Blind spot** a hook does not run for a contributor who never installed it, or
 for an agent on another harness.
 
@@ -350,7 +350,7 @@ for an agent on another harness.
 never skippable and budget gates use a named opt-out variable instead.
 **Consequences** the set is asserted by a test, because adding a skip for one
 more gate is three lines and nothing outside that file would notice.
-**Records as** `decisions.md`; the set itself in the hook and its test.
+**Records as** `docs/plan/decisions.md`; the set itself in the hook and its test.
 **Blind spot** `--no-verify` bypasses every hook at once and no hook can stop it.
 That is a documented ban, not a gate.
 
@@ -363,7 +363,7 @@ review breadth, model class, agent count?
 **Consequences** without a sanctioned valve, budget overruns get taken
 unilaterally and invisibly, and people learn to route around the *safety* rule
 when what they needed was the budget one.
-**Records as** `decisions.md`, and the variable name in `AGENTS.md`.
+**Records as** `docs/plan/decisions.md`, and the variable name in `AGENTS.md`.
 **Blind spot** a named opt-out records that a budget decision was made, not
 whether it was a good one.
 
@@ -411,6 +411,6 @@ you expect, not every one that exists.
 additionally gets its entry file as a pointer plus delta from `runners/`. A
 harness given another harness's configuration reads it as instructions it cannot
 act on, which is worse than not having it.
-**Records as** `decisions.md`; the furniture itself in Phase 1.
+**Records as** `docs/plan/decisions.md`; the furniture itself in Phase 1.
 **Blind spot** a runner nobody named still runs. `AGENTS.md` is what it finds,
 which is the whole reason that file is the home.

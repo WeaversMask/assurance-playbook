@@ -57,7 +57,7 @@ copy which actually runs did not have. `runners/claude/check-skill-sync.sh` fail
 when they disagree and is armed via `core.hooksPath=.githooks`.
 
 That is the whole of it. Adding gates to this repo is a decision to make on
-purpose, not by accretion — and the deviation is recorded: `quality-gates.md`
+purpose, not by accretion — and the deviation is recorded: `policies/quality-gates.md`
 invariant 11 wants a CI check, this is a hook, and a hook is not CI.
 
 ## Working here
