@@ -104,9 +104,26 @@
      therefore points at the markers on the lines below rather than spelling one
      out.
 
-     **What it does not close: the partly-edited file.** Fill two rules, delete
-     their markers, leave a third as a placeholder value, and the file passes
-     with a dead rule in it. Only the self-test below covers that.
+     **Three ways a file can exist and still be unarmed, and the hook rejects
+     all three.** They were not found together: the first check shipped closing
+     only the third, and review found the other two the same day.
+
+     - **No rules at all.** `touch .gitleaks.local.toml` satisfied both the
+       existence and marker checks, and gitleaks reports "no leaks found" on a
+       config with zero rules rather than erroring — so every layer went green
+       with the layer entirely absent. A file holding only the `[extend]`
+       stanza did the same. The hook now requires at least one rule id. `id =`
+       is a schema keyword, so testing for it discloses nothing.
+     - **Markers deleted, values kept.** The marker is a trailing comment,
+       separable from the value on its own line, so "replace the value **and**
+       delete the marker" was two independently satisfiable instructions of
+       which only the second was enforced. The example's placeholder values are
+       unique strings and are now rejected on their own.
+     - **Copied and untouched** — the original case.
+
+     **What none of them closes: a file filled in with values that are simply
+     wrong.** A rule whose regex has a typo is armed against nobody and looks
+     identical to a working one. Only the self-test covers that.
 
    - **The block prints the shape and the self-test, not a copy of the example.**
      The maintainer is stopped in a terminal, and sending them to a file in
@@ -134,9 +151,11 @@
      not run.
 
      Its output — the list of rule ids — is content-free and is what goes in the
-     matrix. **The maintainer exercises this row, not an agent:** proving it
-     requires the file to exist in its unarmed state, and an agent never creates,
-     reads, or asks about that file.
+     matrix. **The maintainer exercises these rows, not an agent:** proving them
+     requires the file to exist in an unarmed state, and an agent never creates,
+     reads, or asks about that file. The bootstrap procedure owes a matrix row
+     per rejection branch and one for the self-test; until those land, this
+     paragraph is a requirement on the procedure, not a description of it.
 
    *Gotcha, verified against gitleaks 8.30.1:* a rule-scoped allowlist
    needs the plural `[[rules.allowlists]]` form **and**

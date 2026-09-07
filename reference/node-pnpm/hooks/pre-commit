@@ -200,15 +200,42 @@ elif [ ! -f "$repo_root/.gitleaks.local.toml" ]; then
   echo "   Project not pseudonymous? Put a standalone comment line containing"
   echo "   'assurance:no-local-identity-rules' in .gitleaks.toml."
   exit 1
-elif grep -q 'ASSURANCE-PLACEHOLDER' "$repo_root/.gitleaks.local.toml"; then
+elif ! grep -qE '^[[:space:]]*id[[:space:]]*=' "$repo_root/.gitleaks.local.toml"; then
+  # THE EMPTIEST VERSION OF THE FAILURE. `touch .gitleaks.local.toml` satisfied
+  # the existence check AND the placeholder check (nothing to match), and
+  # gitleaks reports "no leaks found" on a config with zero rules rather than
+  # erroring — so every layer went green with the personal-identifier layer
+  # entirely absent. So did a file holding only the `[extend]` stanza this
+  # very block tells you to write first. Found in review, 2026-09-07; the
+  # commit that introduced the placeholder check did not close it.
+  # `id =` is a schema keyword, so testing for it discloses nothing.
+  echo "❌ pre-commit: .gitleaks.local.toml defines no rules."
+  echo "   The file exists but contains no [[rules]] entry, so the"
+  echo "   personal-identifier layer is unarmed — every scan layer will report"
+  echo "   clean because there is nothing for them to match."
+  echo "   Add one [[rules]] block per identifier, then run the per-rule"
+  echo "   self-test. An empty file is not a configured file."
+  exit 1
+elif grep -qE 'ASSURANCE-PLACEHOLDER|example\.invalid|/Users/PLACEHOLDER|Firstname[^A-Za-z]{1,4}Lastname' \
+  "$repo_root/.gitleaks.local.toml"; then
+  # BOTH HALVES, NOT ONE. The marker is a trailing comment, separable from the
+  # value on its own line — so "replace the value and delete the marker" was two
+  # independently satisfiable instructions of which only the second was
+  # enforced. Deleting four comments while keeping `example.invalid` and
+  # `/Users/PLACEHOLDER` produced a file armed against nobody that passed
+  # cleanly. The example's placeholder VALUES are unique strings, so they are
+  # rejected too. Found in review, 2026-09-07.
   echo "❌ pre-commit: .gitleaks.local.toml still holds example placeholders."
-  echo "   It was copied but not filled in, so the personal-identifier layer is"
-  echo "   unarmed — the file exists and no rule in it can match anything."
-  echo "   Placeholder markers remain on line(s):"
-  grep -n 'ASSURANCE-PLACEHOLDER' "$repo_root/.gitleaks.local.toml" | cut -d: -f1 | tr '\n' ' '
+  echo "   It was copied but not fully filled in, so the personal-identifier"
+  echo "   layer is unarmed — the file exists and at least one rule in it"
+  echo "   cannot match anything real."
+  echo "   Placeholder markers or example values remain on line(s):"
+  grep -nE 'ASSURANCE-PLACEHOLDER|example\.invalid|/Users/PLACEHOLDER|Firstname[^A-Za-z]{1,4}Lastname' \
+    "$repo_root/.gitleaks.local.toml" | cut -d: -f1 | tr '\n' ' '
   echo
-  echo "   Replace every placeholder value with a real one and delete its marker,"
-  echo "   then run the per-rule self-test in the example's footer."
+  echo "   Replace the VALUE on each of those lines with a real one — deleting"
+  echo "   the marker comment alone is not enough — then run the per-rule"
+  echo "   self-test in the example's footer."
   exit 1
 fi
 
