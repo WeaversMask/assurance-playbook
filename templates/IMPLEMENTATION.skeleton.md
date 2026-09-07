@@ -41,9 +41,15 @@
 > date raised.
 >
 > **Every open row carries a trigger**, and it is exactly one of: a **task or
-> group id** (`W1`, `P1-17`), a **phase boundary** (`P2-start`, `P3-exit`), an
-> **ISO date**, or **`standing`** — deliberately no trigger, revisited on demand.
-> A closed row needs none.
+> group id as it appears in the tables above** (`T-001`), a **phase boundary**
+> (`P2-start`, `P3-exit`), an **ISO date**, or **`standing`** — deliberately no
+> trigger, revisited on demand.
+>
+> A task id resolves against **Up next / In progress / Blocked / Recently
+> completed** and nowhere else, so a decision id is not a usable trigger and a
+> completed row pruned from the tracker will read as a typo. **Close a row** by
+> opening its *Decision needed* cell with `**Closed YYYY-MM-DD**` — a closed row
+> needs no trigger.
 >
 > This used to read "reviewed before every merge — answered or consciously
 > re-dated", which was a convention with nothing behind it: two rows walked

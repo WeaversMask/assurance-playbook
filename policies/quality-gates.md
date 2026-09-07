@@ -120,7 +120,7 @@
 
 ## Gate classes, and what each may bypass
 
-Three classes, and the bypass policy is a property of the class rather than of
+Four classes, and the bypass policy is a property of the class rather than of
 the gate:
 
 | Class | Examples | Bypass |
@@ -128,12 +128,12 @@ the gate:
 | **Safety** | secret scanning, identity, provenance | **none, at any layer.** Not skippable, not deviable, not dormant |
 | **Quality** | lint, format, types, coverage, licence | scoped, named, justified (invariant 7) |
 | **Budget** | review breadth, model class, agent count | a named opt-out environment variable |
-| **Meta** | gates guarding the assurance layer itself — the decision-trigger check, a skippable-set assertion, an inertness check | **inherits the class of what it guards.** The decision ledger is what makes declining safe, so its check takes no skip and no dormant state, exactly like the safety class |
+| **Meta** | gates guarding the assurance layer itself — the decision-trigger check, a skippable-set assertion, an inertness check | **none.** A meta-gate is the thing that notices when another gate has been narrowed or forgotten, so a bypass on it hides the bypass it exists to catch. Skipping the assertion that guards the skip set is the shape of the problem |
 
 *(A hook manager or a package manager is a **prerequisite**, not a gate: it
 enforces nothing on its own and has no bypass policy to state.)*
 
-The third class exists because without a sanctioned valve, budget overruns get
+The budget class exists because without a sanctioned valve, budget overruns get
 taken unilaterally and invisibly. A wide review is a budget decision, not a
 safety one, and conflating the two teaches people to route around the safety
 rule when what they needed was the budget one.

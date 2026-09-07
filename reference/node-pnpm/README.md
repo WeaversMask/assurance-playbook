@@ -39,8 +39,7 @@ the fail-closed plumbing that a naive port would miss.
 | `scripts/check-licenses.mjs`             | SPDX allowlist + named exceptions pinned to exact license strings, fail-closed on unknowns. The `.pnpm` virtual-store traversal is a **pnpm-specific workaround — port the policy, never the workaround** |
 | `scripts/generate-third-party-notices.mjs` + `scripts/lib/` | Notices generation **plus the `--check` mode that verifies it** — `pnpm notices:check`, run by the `license` job. Compares only the host-independent part: packages declaring `os`/`cpu`/`libc` resolve differently per host, so they are inventoried below a marker the check stops at, and it fails closed if that marker is missing |
 | `scripts/install-gitleaks.sh`            | Pinned scanner download with PATH fallback and fail-closed missing-binary behavior                                                         |
-
-| `scripts/check-decisions.mjs`            | Decision-trigger gate: fails when an open decision's trigger has already passed. Fail-closed on a missing section, an unparseable table, zero rows, an unreadable phase, or a trigger resolving to no id |
+| `scripts/check-decisions.mjs`            | Decision-trigger gate: fails when an open decision's trigger has already passed. Fail-closed on a missing or renamed completed section, an unparseable table, zero rows, an unresolvable phase where one is needed, or a trigger resolving to no task id |
 
 ## Known gaps (policy leads, reference lags)
 

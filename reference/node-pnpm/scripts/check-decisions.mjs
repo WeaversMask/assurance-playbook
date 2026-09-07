@@ -133,15 +133,24 @@ function currentPhase() {
   return { major: Number(tokens[0][1]), raw: tokens[0][0] };
 }
 
-const phase = currentPhase();
-if (phase.error) {
-  die(
-    `❌ decisions: cannot determine the current phase from ${TRACKER}.`,
-    `   ${phase.error}`,
-    '   Expected exactly one token like "P1-04" on the "**Phase:**" line.',
-    "   Phase-boundary triggers cannot be resolved without it, and a trigger",
-    "   that cannot be resolved must not read as unexpired.",
-  );
+// Resolved LAZILY, on the first phase-boundary trigger. A tier-1 project has no
+// phases — the catalogue says its tier row carries an ISO date for exactly that
+// reason — so dying up front locked those projects out of the gate entirely over
+// a value none of their triggers used.
+let phase = null;
+function requirePhase(rowId) {
+  if (phase) return phase;
+  const p = currentPhase();
+  if (p.error) {
+    die(
+      `❌ decisions: ${rowId} has a phase-boundary trigger, but the current phase`,
+      `   cannot be determined from ${TRACKER}: ${p.error}`,
+      '   Expected exactly one token like "P1-04" on the "**Phase:**" line.',
+      "   A trigger that cannot be resolved must not read as unexpired.",
+    );
+  }
+  phase = p;
+  return phase;
 }
 
 // ── Ids, harvested by section ───────────────────────────────────────────────
@@ -182,10 +191,25 @@ const sectionsByHeading = new Map(
 );
 const sectionNamed = (re) => [...sectionsByHeading].find(([h]) => re.test(h))?.[1];
 
+// TASK sections only. Harvesting from every table made any single-word
+// first-column cell a resolvable trigger — including a decision id (`D-000`,
+// which can never appear in a completed section, so the trigger could never
+// fire) and stray prose in an unrelated table. Both were silent passes, and
+// both contradicted the four-form vocabulary this gate is supposed to enforce.
+const TASK_SECTIONS = /^(up next|in progress|blocked|recently completed|completed)/i;
 const knownIds = new Set();
-for (const [, s] of sectionsByHeading) for (const id of idsIn(s)) knownIds.add(id);
+for (const [heading, s] of sectionsByHeading) {
+  if (TASK_SECTIONS.test(heading)) for (const id of idsIn(s)) knownIds.add(id);
+}
 
-const completedIds = idsIn(sectionNamed(/recently completed|^completed/i));
+// FAIL CLOSED WHEN THE COMPLETED SECTION IS ABSENT. The first version of this
+// took `idsIn(undefined)` — an empty set, silently — so a tracker whose section
+// was renamed ("Done this week") read every completed-id trigger as unfired and
+// printed a tick. That is the same silent pass as the bug this replaced, keyed
+// on a missing heading instead of a missing word. It is not distinguishable
+// from "nothing has completed yet", so it blocks and says which it might be.
+const completedSection = sectionNamed(/recently completed|^completed/i);
+const completedIds = idsIn(completedSection);
 
 // ── Where the trigger lives ─────────────────────────────────────────────────
 // Two shapes are accepted, because both are in use. A dedicated `Trigger`
@@ -255,16 +279,27 @@ for (const line of rows) {
 
   const boundary = token.match(PHASE_BOUNDARY);
   if (boundary) {
+    const p = requirePhase(id);
     const major = Number(boundary[1]);
-    const passed = boundary[2] === "start" ? phase.major >= major : phase.major > major;
-    if (passed) fail.push(`${id}: trigger \`${token}\` has passed (current phase ${phase.raw}).`);
+    const passed = boundary[2] === "start" ? p.major >= major : p.major > major;
+    if (passed) fail.push(`${id}: trigger \`${token}\` has passed (current phase ${p.raw}).`);
     continue;
   }
 
   if (!knownIds.has(token)) {
     fail.push(
       `${id}: trigger \`${token}\` is not a date, not a phase boundary, not \`standing\`, ` +
-        `and resolves to no id in the tracker. A typo is a trigger that never fires.`,
+        `and resolves to no task id in the tracker. A typo is a trigger that never fires — ` +
+        `and a completed task pruned from the tracker looks the same from here.`,
+    );
+    continue;
+  }
+
+  if (!completedSection) {
+    fail.push(
+      `${id}: trigger \`${token}\` names a task, but there is no "Recently completed" ` +
+        `section to resolve it against. Either the section is missing or renamed, or ` +
+        `nothing has completed yet — those are indistinguishable from here, so this blocks.`,
     );
     continue;
   }
@@ -287,4 +322,5 @@ if (fail.length) {
   process.exit(1);
 }
 
-console.log(`✅ decisions: ${open} open row(s) checked against current phase ${phase.raw}; no trigger has passed.`);
+const against = phase ? `current phase ${phase.raw}` : "today's date and the tracker's task ids";
+console.log(`✅ decisions: ${open} open row(s) checked against ${against}; no trigger has passed.`);

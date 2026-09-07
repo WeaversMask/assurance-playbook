@@ -37,10 +37,11 @@ install.
 > which entry each section answers. Only genuinely missing or ambiguous items go
 > back to the maintainer.
 
-Four things are collected here, in full, before anything else. Two of them —
-the tier and pseudonymity — **are** catalogue entries (T0 and A1), inlined
-because everything else hangs off them. The remaining twenty live in
-[`decisions/catalogue.md`](decisions/catalogue.md) and are worked from step 5.
+Five things are collected here, in full, before anything else. Three of them —
+the tier, the identity and pseudonymity — **are** catalogue entries (T0, A2 and
+A1), inlined because Phases 1 and 2 need their answers before the rest of the
+catalogue is worked. The remaining nineteen live in
+[`decisions/catalogue.md`](decisions/catalogue.md) and are worked from step 6.
 
 **Say this before the first question.** Otherwise the check that makes declining
 safe reads as a punishment for declining:
@@ -82,7 +83,15 @@ safe reads as a punishment for declining:
    **The tier never scales the safety class.** Secret scanning, identity and
    provenance are identical at every tier.
 
-4. **Is this project pseudonymous? (A1)** Decide now and record it in the
+4. **The public identity this repo commits as** — display name plus the
+   provider noreply address. Needed here on **both** branches of the next
+   question, because the identity gates install at every tier and read this as
+   their single source of truth; it goes into `AGENTS.md` at Phase 1.5 and into
+   repo-local git config at Phase 1.2. For a pseudonymous project, catalogue
+   entry A2 decides whether the persona is fresh or shared — ask it here rather
+   than later, since Phase 1.2 needs the answer.
+
+5. **Is this project pseudonymous? (A1)** Decide now and record it in the
    project's `AGENTS.md`. It is **effectively irreversible after the first PR**:
    `refs/pull/*` survive history rewrites, so a later change of mind means
    migrating to a fresh repo and discarding every PR, review thread and issue
@@ -91,7 +100,7 @@ safe reads as a punishment for declining:
    `assurance:no-local-identity-rules` opt-out marker placed in Phase 2.1 — but
    it must be chosen, not defaulted into.
 
-5. **Work [`decisions/catalogue.md`](decisions/catalogue.md) in order**, asking
+6. **Work [`decisions/catalogue.md`](decisions/catalogue.md) in order**, asking
    each entry whose tier and applicability admit it, and **record every outcome
    before leaving Phase 0**. Three outcomes, all of which write something:
 
@@ -130,7 +139,7 @@ instead of stalling the run.
 5. Process furniture from `templates/`: `AGENTS.md` (from
    `templates/AGENTS.template.md`) as the onboarding home every agent reads —
    **placeholders filled, including the declared identity and the pseudonymity
-   decision from Phase 0.4**, which live there rather than in a harness file so
+   decision from Phase 0.5**, which live there rather than in a harness file so
    the identity gates' single source of truth reaches every agent. Plus, only
    for the harness(es) named in Phase 0, that harness's entry file as a pointer
    plus delta (for Claude Code, `CLAUDE.md` from
@@ -195,7 +204,7 @@ fresh install is the worst possible time to debug a misattributed error.
    ([secret-scanning.md](policies/secret-scanning.md)): the committed
    config with its fixture allowlist, plus the committed absolute-home-path
    rule ([identity-protection.md](policies/identity-protection.md)
-   invariant 5a). For a non-pseudonymous project (Phase 0.4), put the
+   invariant 5a). For a non-pseudonymous project (Phase 0.5), put the
    `assurance:no-local-identity-rules` marker comment in it now.
 2. **Hook manager** appropriate to the stack (husky, pre-commit, lefthook,
    or plain `core.hooksPath`).
@@ -258,7 +267,7 @@ fresh install is the worst possible time to debug a misattributed error.
 
 ### HUMAN STOP — the local personal-identifier patterns file
 
-Pseudonymous projects only; a Phase 0.4 "no" skips this via the opt-out
+Pseudonymous projects only; a Phase 0.5 "no" skips this via the opt-out
 marker placed in Phase 2.1.
 
 The maintainer creates `.gitleaks.local.toml` **by hand**, from

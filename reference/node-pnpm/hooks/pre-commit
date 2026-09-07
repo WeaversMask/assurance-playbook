@@ -216,8 +216,8 @@ elif ! grep -qE '^[[:space:]]*id[[:space:]]*=' "$repo_root/.gitleaks.local.toml"
   echo "   Add one [[rules]] block per identifier, then run the per-rule"
   echo "   self-test. An empty file is not a configured file."
   exit 1
-elif grep -qE 'PLACEHOLDER|example\.invalid|Firstname|Lastname' \
-  "$repo_root/.gitleaks.local.toml"; then
+elif grep -E '^[[:space:]]*(regex|id)[[:space:]]*=' "$repo_root/.gitleaks.local.toml" \
+  | grep -qE 'PLACEHOLDER|example\.invalid|Firstname|Lastname'; then
   # BOTH HALVES, NOT ONE. The marker is a trailing comment, separable from the
   # value on its own line — so "replace the value and delete the marker" was two
   # independently satisfiable instructions of which only the second was
@@ -230,8 +230,8 @@ elif grep -qE 'PLACEHOLDER|example\.invalid|Firstname|Lastname' \
   echo "   layer is unarmed — the file exists and at least one rule in it"
   echo "   cannot match anything real."
   echo "   Placeholder markers or example values remain on line(s):"
-  grep -nE 'PLACEHOLDER|example\.invalid|Firstname|Lastname' \
-    "$repo_root/.gitleaks.local.toml" | cut -d: -f1 | tr '\n' ' '
+  grep -nE '^[[:space:]]*(regex|id)[[:space:]]*=' "$repo_root/.gitleaks.local.toml" \
+    | grep -E 'PLACEHOLDER|example\.invalid|Firstname|Lastname' | cut -d: -f1 | tr '\n' ' '
   echo
   echo "   Replace the VALUE on each of those lines with a real one — deleting"
   echo "   the marker comment alone is not enough — then run the per-rule"

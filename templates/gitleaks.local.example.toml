@@ -11,7 +11,7 @@
 #   * is passed to gitleaks as an additional config layer by the hooks when
 #     present (hooks run gitleaks once per config; both must pass).
 #
-# ── THE PLACEHOLDER MARKERS ─────────────────────────────────────────────────
+# ── THE MARKER COMMENTS ─────────────────────────────────────────────────────
 # Every line you must edit ends with a marker comment — you can see them on the
 # four rules below. Replace the value, then delete that comment. The hooks
 # REJECT any .gitleaks.local.toml that still carries one, because a file that
@@ -30,11 +30,15 @@
 # a false REJECT, which is loud and costs one edit. The opposite error is silent
 # and costs the whole layer.
 #
-# WHAT THE SENTINEL DOES NOT CATCH: a partly-edited file. Fill in two rules,
-# delete their sentinels, leave the third as a placeholder value, and this
-# file passes with a rule that can never match. Only the self-test at the
-# bottom covers that, which is why it checks EVERY rule by id rather than
-# counting hits.
+# WHAT THE HOOK CATCHES: a file with no rules at all, a file still carrying a
+# marker comment, and a file whose markers were deleted while an example VALUE
+# was left behind — it scans the `regex =` and `id =` lines, so comments in this
+# header cannot jam it and cannot satisfy it either.
+#
+# WHAT IT DOES NOT CATCH: a rule filled in with a typo. It is armed against
+# nobody and looks identical to a working one. Only the self-test at the bottom
+# covers that, which is why it checks EVERY rule by id rather than counting
+# hits.
 
 title = "Local personal-identifier rules (example — placeholders only)"
 

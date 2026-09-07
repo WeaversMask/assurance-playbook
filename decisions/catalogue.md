@@ -93,7 +93,9 @@ committed config as a standalone comment line, and never as prose mentioning it.
 pseudonymous too, or this decision leaks through a channel it does not cover.
 
 ### A2 — Fresh persona, or one you already use?
-**Tier 1 · P0 · applies when** pseudonymous.
+**Tier 1 · P0 · applies when** pseudonymous. **Asked inline in `BOOTSTRAP.md`**,
+with the identity value itself — Phase 1.2 sets repo-local git config from it, so
+it cannot wait for the rest of the catalogue.
 **Default** fresh.
 **Alternatives** reuse an existing persona.
 **How to tell** reusing one links this project to the others under it — not to
