@@ -89,7 +89,7 @@ regex = '''(?i)Firstname\s+Lastname''' # ASSURANCE-PLACEHOLDER
 #       echo "cd /Users/<your real username>/proj"      # home-directory-path
 #       echo "<Your Real Name> wrote this"              # real-name
 #     } > "$d/probe.txt"
-#     gitleaks detect --no-git --source "$d" --no-banner \
+#     gitleaks detect --no-git --source "$d" --no-banner --redact \
 #       --config .gitleaks.local.toml \
 #       --report-format json --report-path "$d/out.json" || true
 #     echo "--- rules that fired ---"
@@ -99,6 +99,11 @@ regex = '''(?i)Firstname\s+Lastname''' # ASSURANCE-PLACEHOLDER
 # EXPECT: every rule id you defined above, plus the committed config's
 # absolute-home-path rule. A rule id that does not appear is a rule that
 # cannot match — fix it before you commit anything.
+#
+# `--redact` matters: without it the JSON report holds your real identifiers in
+# cleartext on disk. Only the rule ids are wanted here, and redaction leaves those
+# intact. Run this from the repo root — the relative `--config` and the `[extend]`
+# path both resolve from there.
 #
 # The trap is load-bearing. `mktemp` then `rm` as separate steps leaves the
 # file behind whenever the middle step fails, which is precisely when a file

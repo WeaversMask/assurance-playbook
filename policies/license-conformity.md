@@ -106,6 +106,11 @@
 
 ## Mechanism notes (non-normative)
 
+- **Policy leads the reference on notices scope.** The generator named below
+  regenerates from the *installed* tree, so it cannot recover packages that did
+  not install on this host — exactly the omission invariant 6 now rules out. It
+  annotates platform-constrained packages it can see; it does not derive the set
+  from the lockfile. Build new projects to the invariant, not to this gap.
 - Node/pnpm reference: `reference/node-pnpm/scripts/check-licenses.mjs`
   (note its `.pnpm` virtual-store traversal workaround — pnpm-specific,
   do not port the workaround, port the policy) and

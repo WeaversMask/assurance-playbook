@@ -13,6 +13,11 @@
 # decoration this playbook exists to prevent. Verify with:
 #   git config core.hooksPath   # expect: .githooks
 #
+# It is repo-WIDE, not additive: setting it makes git ignore `.git/hooks/*`
+# entirely. Harmless here (that directory holds only samples), but any hook
+# installed there later stops running silently, so a second hook belongs in this
+# directory rather than that one.
+#
 # It runs on every commit rather than only on commits touching the skill, because
 # the drift this catches is usually introduced by editing the INSTALLED copy —
 # which leaves no trace in this repo's staged changes at all.
