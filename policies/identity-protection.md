@@ -88,6 +88,56 @@
      arms the highest-frequency case from the first commit with no manual
      step at all.
 
+   - **An existing file is not an armed file.** The example ships placeholder
+     values behind a marker comment on every fillable line, and the hooks
+     **reject any local config that still carries one**. Without this, the
+     obvious move — copy the example, mean to edit it, get distracted — leaves
+     a file that satisfies the existence check while holding no rule that could
+     match: the same three-healthy-layers-nothing-to-match failure, one step
+     later.
+
+     **Describe the marker; never quote it.** This is invariant 5a's own lesson
+     applied to invariant 5a's own fix. A comment explaining the marker
+     *contains* the marker, so prose about the check jams the check — there it
+     silently opted a project out, here it would reject a correctly filled file
+     forever until someone deleted the explanation. The example's header
+     therefore points at the markers on the lines below rather than spelling one
+     out.
+
+     **What it does not close: the partly-edited file.** Fill two rules, delete
+     their markers, leave a third as a placeholder value, and the file passes
+     with a dead rule in it. Only the self-test below covers that.
+
+   - **The block prints the shape and the self-test, not a copy of the example.**
+     The maintainer is stopped in a terminal, and sending them to a file in
+     another repository is where the procedure loses people. The hook states
+     which rules must exist, the `[extend]` line, and how to prove it fires. It
+     does **not** reproduce the example's regexes: that would be a second copy
+     with nothing cross-checking it. A requirement list and a filled
+     instantiation are not copies of each other.
+
+   - **Every message is content-free — file and line numbers only.** This output
+     is pasted into the verification matrix, so echoing a matching line would
+     write the identifiers being protected into a committed file and an agent's
+     context at once.
+
+   - **The self-test checks rule IDs, not a hit count**, and is run by the
+     maintainer. This is the only gate a human installs by hand and was the only
+     one never proven — a gate never seen to fail is decoration, and that
+     applies here too. Counting hits is insufficient because the rules overlap:
+     one address trips both the address rule and the domain rule, so four hits
+     can come from two working rules and two dead ones. Write one probe line per
+     rule using real values, confirm **every** defined rule id appears, and
+     include the inherited committed-config rule. Clean up with a trap rather
+     than a following `rm` — the file holds real identifiers and must not
+     survive a mid-way failure, which is exactly when a trailing command does
+     not run.
+
+     Its output — the list of rule ids — is content-free and is what goes in the
+     matrix. **The maintainer exercises this row, not an agent:** proving it
+     requires the file to exist in its unarmed state, and an agent never creates,
+     reads, or asks about that file.
+
    *Gotcha, verified against gitleaks 8.30.1:* a rule-scoped allowlist
    needs the plural `[[rules.allowlists]]` form **and**
    `regexTarget = "match"`. The default target is `secret`, which is not

@@ -11,32 +11,95 @@
 #   * is passed to gitleaks as an additional config layer by the hooks when
 #     present (hooks run gitleaks once per config; both must pass).
 #
-# This example ships only placeholders.
+# ── THE PLACEHOLDER MARKERS ─────────────────────────────────────────────────
+# Every line you must edit ends with a marker comment — you can see them on the
+# four rules below. Replace the value, then delete that comment. The hooks
+# REJECT any .gitleaks.local.toml that still carries one, because a file that
+# exists is not a file that is armed: a copied-but-unedited config passes an
+# existence check while holding no rule that could match, which is the exact
+# invariant-5a failure — three healthy scan layers, nothing to match on.
+#
+# THIS COMMENT DELIBERATELY DOES NOT SPELL THE MARKER OUT, and that is the same
+# lesson invariant 5a already paid for once: a comment explaining a marker
+# contains the marker, so prose about the check disarms or jams the check. There
+# it silently opted a project out; here it would reject a correctly filled file
+# forever, until the maintainer deleted the explanation. Describe the token,
+# never quote it.
+#
+# The rejection is otherwise deliberately over-eager: a stray occurrence causes
+# a false REJECT, which is loud and costs one edit. The opposite error is silent
+# and costs the whole layer.
+#
+# WHAT THE SENTINEL DOES NOT CATCH: a partly-edited file. Fill in two rules,
+# delete their sentinels, leave the third as a placeholder value, and this
+# file passes with a rule that can never match. Only the self-test at the
+# bottom covers that, which is why it checks EVERY rule by id rather than
+# counting hits.
 
 title = "Local personal-identifier rules (example — placeholders only)"
 
 [extend]
-# Extend the repo's committed config so the fixture allowlists still apply.
+# Extend the repo's committed config so the fixture allowlists still apply,
+# and so the committed absolute-home-path rule (invariant 5a) stays active.
 path = ".gitleaks.toml"
 
 [[rules]]
 id = "personal-email"
 description = "Maintainer's personal email must never appear in content"
-# Replace with your real address(es), escaped for regex:
-regex = '''your\.personal\.address@personal-domain\.example'''
+regex = '''your\.name@example\.invalid''' # ASSURANCE-PLACEHOLDER
 
 [[rules]]
 id = "personal-email-domain"
 description = "Any address at the personal domain"
-regex = '''[A-Za-z0-9._%+-]+@personal-domain\.example'''
+regex = '''[A-Za-z0-9._%+-]+@example\.invalid''' # ASSURANCE-PLACEHOLDER
 
 [[rules]]
 id = "home-directory-path"
 description = "Home-directory paths leak the local username"
-# Replace <username> with your actual local username(s):
-regex = '''(/Users/<username>|/home/<username>|C:\\Users\\<username>)'''
+regex = '''(/Users/PLACEHOLDER|/home/PLACEHOLDER|C:\\Users\\PLACEHOLDER)''' # ASSURANCE-PLACEHOLDER
 
 [[rules]]
 id = "real-name"
 description = "Maintainer's legal name (if it must stay out of content)"
-regex = '''(?i)Firstname\s+Lastname'''
+regex = '''(?i)Firstname\s+Lastname''' # ASSURANCE-PLACEHOLDER
+
+# ── SELF-TEST — run this before you trust the file ──────────────────────────
+#
+# This is the only gate in the whole procedure that a human installs by hand,
+# and until now it was the only one never proven. A gate that was never seen
+# to fail is decoration; that applies to this file too.
+#
+# COUNTING HITS IS NOT ENOUGH. The rules above overlap — a single address
+# trips both `personal-email` and `personal-email-domain` — so a total of
+# four hits can come from two working rules and two dead ones. Check the
+# rule IDs, one probe line per rule, and confirm every id you defined
+# appears. The inherited rule from the committed config is checked too: it
+# is armed from the first commit and is the highest-frequency case.
+#
+# Run this yourself. Do not paste its input into a session — the probe lines
+# contain your real identifiers. The rule-id list it prints is content-free
+# and is what goes in the verification matrix.
+#
+#   (
+#     d=$(mktemp -d); trap 'rm -rf "$d"' EXIT
+#     # One line per rule, using your REAL values:
+#     {
+#       echo "contact <your real email>"                # personal-email
+#       echo "mail anything@<your real domain>"         # personal-email-domain
+#       echo "cd /Users/<your real username>/proj"      # home-directory-path
+#       echo "<Your Real Name> wrote this"              # real-name
+#     } > "$d/probe.txt"
+#     gitleaks detect --no-git --source "$d" --no-banner \
+#       --config .gitleaks.local.toml \
+#       --report-format json --report-path "$d/out.json" || true
+#     echo "--- rules that fired ---"
+#     grep -o '"RuleID"[^,]*' "$d/out.json" | sort -u
+#   )
+#
+# EXPECT: every rule id you defined above, plus the committed config's
+# absolute-home-path rule. A rule id that does not appear is a rule that
+# cannot match — fix it before you commit anything.
+#
+# The trap is load-bearing. `mktemp` then `rm` as separate steps leaves the
+# file behind whenever the middle step fails, which is precisely when a file
+# holding your real identifiers must not linger in the tree.

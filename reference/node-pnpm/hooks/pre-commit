@@ -161,16 +161,54 @@ fi
 # that the project does NOT opt out. That disarmed this check in a live port
 # (2026-08-15) — silently, which is the whole failure mode invariant 5a
 # exists to prevent.
-if [ ! -f "$repo_root/.gitleaks.local.toml" ] &&
-  ! grep -qE '^[[:space:]]*#[[:space:]]*assurance:no-local-identity-rules[[:space:]]*$' \
-    "$repo_root/.gitleaks.toml"; then
+#
+# TWO FAILURES, NOT ONE. A missing file and a copied-but-unedited file are the
+# same failure wearing different clothes: no rule that could match. The second
+# only became reachable once the block below started printing a fillable shape,
+# so both are checked here.
+#
+# EVERY MESSAGE BELOW IS CONTENT-FREE — file names and line numbers only, never
+# a line of .gitleaks.local.toml. The maintainer pastes this output into the
+# verification matrix, and echoing a matching line would put the identifiers
+# being protected into a committed file and an agent's context at once.
+if grep -qE '^[[:space:]]*#[[:space:]]*assurance:no-local-identity-rules[[:space:]]*$' \
+  "$repo_root/.gitleaks.toml"; then
+  : # Non-pseudonymous project: opted out, deliberately and standalone.
+elif [ ! -f "$repo_root/.gitleaks.local.toml" ]; then
   echo "❌ pre-commit: .gitleaks.local.toml is missing."
   echo "   Personal-identifier scanning is unarmed — the committed config"
   echo "   cannot carry your email or legal name without disclosing them."
-  echo "   Create it by hand from templates/gitleaks.local.example.toml."
-  echo "   Never let an agent create it or read its contents."
-  echo "   Project not pseudonymous? Put a comment containing"
+  echo "   Write it by hand. NEVER let an agent create it or read its contents."
+  echo
+  echo "   ─── the shape it must have ───"
+  echo "   [extend]"
+  echo "   path = \".gitleaks.toml\""
+  echo
+  echo "   then one [[rules]] block per identifier, each with an id and a regex:"
+  echo "     personal-email        your real address(es), regex-escaped"
+  echo "     personal-email-domain any address at your personal domain"
+  echo "     home-directory-path   /Users/<user>, /home/<user>, C:\\Users\\<user>"
+  echo "     real-name             your legal name, if it must stay out of content"
+  echo
+  echo "   ─── then prove it fires, one probe per rule ───"
+  echo "   Write one line per rule using your REAL values into a temp file and"
+  echo "   confirm every rule id appears. Counting hits is not enough: the email"
+  echo "   rules overlap, so four hits can come from two working rules and two"
+  echo "   dead ones. The full command is in the example's footer."
+  echo
+  echo "   Example with placeholders: templates/gitleaks.local.example.toml"
+  echo "   Project not pseudonymous? Put a standalone comment line containing"
   echo "   'assurance:no-local-identity-rules' in .gitleaks.toml."
+  exit 1
+elif grep -q 'ASSURANCE-PLACEHOLDER' "$repo_root/.gitleaks.local.toml"; then
+  echo "❌ pre-commit: .gitleaks.local.toml still holds example placeholders."
+  echo "   It was copied but not filled in, so the personal-identifier layer is"
+  echo "   unarmed — the file exists and no rule in it can match anything."
+  echo "   Placeholder markers remain on line(s):"
+  grep -n 'ASSURANCE-PLACEHOLDER' "$repo_root/.gitleaks.local.toml" | cut -d: -f1 | tr '\n' ' '
+  echo
+  echo "   Replace every placeholder value with a real one and delete its marker,"
+  echo "   then run the per-rule self-test in the example's footer."
   exit 1
 fi
 
