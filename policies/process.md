@@ -7,7 +7,8 @@
 ## Repo furniture every project gets
 
 - `CLAUDE.md` at root (~30 lines): onboarding sequence, context budget,
-  permission-prompt policy, evergreen gotchas (`templates/CLAUDE.template.md`).
+  permission-prompt policy, evergreen gotchas (for Claude Code,
+  `runners/claude/CLAUDE.template.md`).
 - `docs/IMPLEMENTATION.md`: living tracker — current phase, in
   progress, blocked, recently completed, open decisions
   (`templates/IMPLEMENTATION.skeleton.md`).

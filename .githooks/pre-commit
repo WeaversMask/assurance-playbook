@@ -1,0 +1,24 @@
+#!/usr/bin/env sh
+# Pre-commit hook for the assurance playbook itself.
+#
+# SCOPE, deliberately narrow. This repo does NOT self-apply the playbook — it has
+# no remote, no CI and one maintainer, and full self-application would be ceremony
+# (brief §6.4). The one exception §6.4 names is the skill-copy freshness check,
+# which fixes a live credibility hole in the file that carries every other rule.
+# That is all this hook does. Adding gates here is a decision to make on purpose,
+# not by accretion.
+#
+# ACTIVATION: `git config core.hooksPath .githooks`. Committing this file does not
+# arm it — a hook in the tree that nobody configured is exactly the kind of
+# decoration this playbook exists to prevent. Verify with:
+#   git config core.hooksPath   # expect: .githooks
+#
+# It runs on every commit rather than only on commits touching the skill, because
+# the drift this catches is usually introduced by editing the INSTALLED copy —
+# which leaves no trace in this repo's staged changes at all.
+
+set -e
+
+repo_root="$(git rev-parse --show-toplevel)"
+
+sh "$repo_root/runners/claude/check-skill-sync.sh"

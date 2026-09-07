@@ -75,8 +75,8 @@ procedure reaches it, instead of stalling the run.
    outputs, the local scanner-patterns file (`.gitleaks.local.toml`),
    local tool binaries.
 4. `LICENSE` + manifest license field, agreeing with each other.
-5. Process furniture from `templates/`: `CLAUDE.md` (from
-   `CLAUDE.template.md`, placeholders filled — including the pseudonymity
+5. Process furniture from `templates/`: the runner entry file (for Claude
+   Code, `CLAUDE.md` from `runners/claude/CLAUDE.template.md`, placeholders filled — including the pseudonymity
    decision from Phase 0.4), `docs/IMPLEMENTATION.md` (from the
    skeleton), `docs/HANDOVER.md`, and the full documentation layout from
    [documentation.md](policies/documentation.md) (`docs/handovers/`,

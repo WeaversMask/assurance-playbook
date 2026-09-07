@@ -36,7 +36,7 @@ project is considered protected.
 | `policies/documentation.md` | Documentation structure: capture streams, homes, triggers, per-task delta, doc-comment-first reference                                          |
 | `reference/node-pnpm/`      | Argus's real hooks, CI, and scripts — a worked example, not a copy source                                                                       |
 | `templates/`                | Genericized starting files: project-plan template, CLAUDE.md, tracker, handover/task/PR/ADR templates, go-public checklist, local gitleaks patterns example |
-| `skill/bootstrap-assurance/` | Canonical copy of the Claude Code skill that drives BOOTSTRAP.md (installed at `~/.claude/skills/bootstrap-assurance/`)                        |
+| `runners/`                  | Runner-specific furniture, installed only for the harness a project names. `runners/claude/` holds the skill (canonical copy; installed at `~/.claude/skills/bootstrap-assurance/`), the harness entry-file template, and the sync check |
 
 ## Using it
 
@@ -66,8 +66,8 @@ executable by either a human or an agent.
   confirm:
 
   ```sh
-  cp skill/bootstrap-assurance/SKILL.md ~/.claude/skills/bootstrap-assurance/SKILL.md
-  diff skill/bootstrap-assurance/SKILL.md ~/.claude/skills/bootstrap-assurance/SKILL.md && echo in-sync
+  cp runners/claude/skill/bootstrap-assurance/SKILL.md ~/.claude/skills/bootstrap-assurance/SKILL.md
+  sh runners/claude/check-skill-sync.sh
   ```
 - Never commit personal identifiers here — same rule as everywhere else.
   The local patterns file is per-machine and gitignored, even in this repo.
