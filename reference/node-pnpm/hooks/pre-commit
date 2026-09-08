@@ -191,14 +191,35 @@ elif [ ! -f "$repo_root/.gitleaks.local.toml" ]; then
   echo "     real-name             your legal name, if it must stay out of content"
   echo
   echo "   ─── then prove it fires, one probe per rule ───"
-  echo "   Write one line per rule using your REAL values into a temp file and"
-  echo "   confirm every rule id appears. Counting hits is not enough: the email"
-  echo "   rules overlap, so four hits can come from two working rules and two"
-  echo "   dead ones. The full command is in the example's footer."
+  echo "   Counting hits is not enough: the email rules overlap, so four hits can"
+  echo "   come from two working rules and two dead ones. Check the rule IDS."
+  echo "   Run this yourself; never paste its input into a session."
   echo
-  echo "   Example with placeholders: templates/gitleaks.local.example.toml"
-  echo "   Project not pseudonymous? Put a standalone comment line containing"
-  echo "   'assurance:no-local-identity-rules' in .gitleaks.toml."
+  # A QUOTED heredoc: no expansion, no escaping, so what is printed is exactly
+  # what can be pasted. The previous form built this from `echo` lines and
+  # mangled two of them — `trap` and the `grep` pattern both came out with
+  # doubled quotes. A remedy that is not runnable as printed is worse than a
+  # pointer to a file, because it looks like it works.
+  cat <<'PROBE'
+     (
+       d=$(mktemp -d); trap 'rm -rf "$d"' EXIT
+       {                                  # one line per rule, your REAL values
+         echo "contact <your real email>"
+         echo "mail anything@<your real domain>"
+         echo "cd /Users/<your real username>/proj"
+         echo "<Your Real Name> wrote this"
+       } > "$d/probe.txt"
+       gitleaks detect --no-git --source "$d" --no-banner --redact \
+         --config .gitleaks.local.toml \
+         --report-format json --report-path "$d/out.json" || true
+       grep -o '"RuleID"[^,]*' "$d/out.json" | sort -u
+     )
+PROBE
+  echo
+  echo "   EXPECT every rule id you defined, plus the committed config's"
+  echo "   absolute-home-path rule. An id that does not appear cannot match."
+  echo "   --redact matters: without it the report holds your identifiers in"
+  echo "   cleartext on disk. Run it from the repo root."
   exit 1
 elif ! grep -qE '^[[:space:]]*id[[:space:]]*=' "$repo_root/.gitleaks.local.toml"; then
   # THE EMPTIEST VERSION OF THE FAILURE. `touch .gitleaks.local.toml` satisfied

@@ -467,6 +467,31 @@ expect "a standalone opt-out marker passes" 0 run_block "$h/optout"
 state prose;      printf '# we do NOT use assurance:no-local-identity-rules here\n' >> "$h/prose/.gitleaks.toml"
 expect_msg "the marker mentioned in prose does not opt out" 1 "is missing" run_block "$h/prose"
 
+# THE PRINTED PROBE MUST BE RUNNABLE AS PRINTED. BOOTSTRAP.md states that the
+# block prints the self-test command; for eight commits it printed "the full
+# command is in the example's footer" instead — and the example is never copied
+# into a bootstrapped repo, so that pointer named a file the maintainer does not
+# have. The first inline version then mangled `trap` and the `grep` pattern into
+# doubled quotes. A remedy that is not runnable as printed is worse than a
+# pointer, because it looks like it works. Parse it; do not eyeball it.
+probe="$(run_block "$h/missing" 2>&1 | sed -n '/^     (/,/^     )/p')"
+if [ -z "$probe" ]; then
+  fail=$((fail + 1)); printf '  FAIL  the block prints no self-test command\n'
+elif printf '%s\n' "$probe" | sh -n 2>/dev/null; then
+  pass=$((pass + 1)); printf '  ok    the printed self-test parses as shell\n'
+else
+  fail=$((fail + 1)); printf '  FAIL  the printed self-test does not parse as shell\n'
+  printf '%s\n' "$probe" | sed 's/^/        /'
+fi
+
+# The block must be self-sufficient: a bootstrapped repo has no `templates/`.
+if run_block "$h/missing" 2>&1 | grep -q 'templates/gitleaks.local.example.toml'; then
+  fail=$((fail + 1))
+  printf '  FAIL  the block sends the maintainer to a path no bootstrapped repo has\n'
+else
+  pass=$((pass + 1)); printf '  ok    the block names no playbook-only path\n'
+fi
+
 # No message may echo file content: this output goes into a verification matrix.
 leak="$(run_block "$h/unedited" 2>&1 | grep -E 'example\.invalid|Firstname|PLACEHOLDER' || true)"
 if [ -n "$leak" ]; then

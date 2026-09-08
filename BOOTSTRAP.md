@@ -143,6 +143,14 @@ instead of stalling the run.
    minimum), and an ADR per divergence. Phase 0 names these three homes but runs
    before this directory exists, so this is the step that makes them real.
 
+   **The tracker ships the tier row already seeded**, as `D-000`, carrying
+   `{{TIER}}`, `{{WHY}}`, `{{DATE_OR_PHASE}}` and `{{DATE}}`. **Fill that row —
+   do not add a second one beside it.** Left as shipped it is the whole reason
+   the first run of the Phase 2.10 check fails: the check reads this table, and
+   `{{DATE_OR_PHASE}}` is not a trigger it can resolve. Found by executing this
+   procedure against a Python project; every earlier read of it missed that the
+   seeded row is template text rather than an example to imitate.
+
 6. Process furniture from `templates/`: `AGENTS.md` (from
    `templates/AGENTS.template.md`) as the onboarding home every agent reads —
    **placeholders filled, including the declared identity and the pseudonymity
@@ -157,11 +165,26 @@ instead of stalling the run.
    plus task/PR/handover/ADR templates. Trim anything inapplicable — the
    policies are the invariant, the file layout is convention.
 
-   **Fill the placeholders Phase 0 answered** — project, branch, identity,
-   pseudonymity, tier. The rest name things that do not exist yet: the gate
-   commands, the declared rules' mechanisms, the decision check, and any
-   harness affordances. Those are filled at Phase 2.12, and leaving them
-   visible until then is better than guessing at them now.
+   **Fill the placeholders Phase 0 answered, in every file that carries them.**
+   Naming only the values left two of the three files untouched — `{{PROJECT}}`
+   alone appears in `AGENTS.md`, the harness entry file and the tracker, and a
+   follower filling "project" filled one:
+
+   | File | Fill now |
+   | --- | --- |
+   | `AGENTS.md` | `{{PROJECT}}`, `{{DEFAULT_BRANCH}}`, `{{PUBLIC_NAME}}`, `{{PUBLIC_NOREPLY_EMAIL}}`, `{{PSEUDONYMOUS_YES_NO}}`, and `{{PROJECT_RULES_THAT_OUTRANK_EVERYTHING}}` — D1's answer, which is decided in Phase 0 and belongs where an agent reads it *before* writing |
+   | harness entry file | `{{PROJECT}}` |
+   | `docs/IMPLEMENTATION.md` | `{{PROJECT}}`, and the seeded `D-000` row from step 5 |
+
+   **The tier is not among them.** It has one home — `D-000` in the tracker,
+   where it carries a trigger the Phase 2.10 check reads. Repeating it in
+   `AGENTS.md` would be a second copy with nothing cross-checking it, which is
+   the failure this playbook argues against everywhere else.
+
+   The rest name things that do not exist yet: the gate commands, the declared
+   rules' mechanisms, the decision check, and any harness affordances. Those are
+   filled at Phase 2.12, and leaving them visible until then is better than
+   guessing at them now.
 
 7. **Install the day-to-day policies into the repo** so sessions there
    never depend on this playbook being present: copy
@@ -361,20 +384,24 @@ the result in a **verification matrix** in the bootstrap PR description.
 | License           | Add a GPL-licensed dev dependency                      | gate blocks, names the package | |
 | Placeholder state | **Maintainer only** — before filling `.gitleaks.local.toml` in, attempt a commit | pre-commit blocks, names line numbers only | |
 | Empty local config | **Maintainer only** — a `.gitleaks.local.toml` with no rules | pre-commit blocks, says it defines no rules | |
+| Self-test / per rule | **Maintainer only** — after filling `.gitleaks.local.toml`, run the probe the block prints | every rule id defined appears, plus the committed absolute-home-path rule | |
 | Decision triggers | Add an open row whose trigger has already passed  | check blocks, names the row | |
 | Fail-closed paths | Remove/rename the scanner binary, attempt commit       | block with instructions | |
 
 **Tier gates which rows are required.** Every tier proves the same base set —
 the safety rows plus the cheap universal ones — namely both
 secret rows, bypass refused, both identity rows, local patterns, committed
-config, placeholder state, empty local config, commit message, decision triggers,
-fail-closed paths. Lint/types, coverage and licence rows are required at tier 2+.
+config, placeholder state, empty local config, self-test, commit message,
+decision triggers, fail-closed paths. Lint/types, coverage and licence rows are required at tier 2+.
 The 3B rows below are gated on **whether a remote exists**, not on tier — a
 project without one has not finished bootstrap.
 
-**The two rows marked maintainer-only are exercised by the maintainer, not the
-agent.** Proving them requires `.gitleaks.local.toml` to exist in an unarmed
-state, and an agent never creates, reads, or asks about that file. The maintainer
+**The rows marked maintainer-only are exercised by the maintainer, not the
+agent.** Proving them requires `.gitleaks.local.toml` to exist — in an unarmed
+state for the rejection rows, and in its finished state for the self-test — and
+an agent never creates, reads, or asks about that file. The self-test row is the
+one that proves the file is armed rather than merely present: the rejection rows
+catch an unedited copy, and none of them catches a rule filled in with a typo. The maintainer
 is already writing it at the HUMAN STOP; those are the states it starts in. The
 rejection output is content-free — file and line numbers, never a matching line —
 which is what makes pasting it into this matrix safe.
