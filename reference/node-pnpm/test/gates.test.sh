@@ -474,6 +474,83 @@ else
   pass=$((pass + 1)); printf '  ok    rejection output is content-free\n'
 fi
 
+# ── THE STANDING CROSS-CHECK ────────────────────────────────────────────────
+# The hook and the example duplicate two things with nothing enforcing
+# agreement: the four rule IDS the hook prints as the shape to write, and the
+# placeholder VALUES and marker token the hook rejects on. Rename any of them in
+# the example and that rejection stops working — silently. It was recorded as
+# `standing`, mitigated only by being greppable, by the very commit that argues
+# against duplication.
+#
+# WHY THE FIXTURES ABOVE DO NOT ALREADY COVER IT. They assert on whole files, so
+# one placeholder still reachable keeps them green while another goes dead —
+# this file's own "a fixture that trips an EARLIER branch than the one it names"
+# trap, one level up. These assert per VALUE, and derive both the count and the
+# marker FROM the example, so a fifth rule is covered the day it is added and a
+# renamed token fails here rather than in a bootstrapped repo months later.
+
+hook_src="$ref/hooks/pre-commit"
+
+ids_example="$(sed -n 's/^id = "\([^"]*\)".*/\1/p' "$example" | sort -u | tr '\n' ' ')"
+ids_hook="$(awk '/one \[\[rules\]\] block per identifier/,/then prove it fires/' "$hook_src" \
+  | sed -n 's/^[[:space:]]*echo "[[:space:]]\{4,\}\([a-z][a-z-]*\)[[:space:]].*/\1/p' \
+  | sort -u | tr '\n' ' ')"
+
+if [ -z "$ids_example" ] || [ -z "$ids_hook" ]; then
+  fail=$((fail + 1))
+  printf '  FAIL  could not extract rule ids — example:[%s] hook:[%s]\n' "$ids_example" "$ids_hook"
+  printf '        An empty set makes the comparison pass vacuously; fix the extraction.\n'
+elif [ "$ids_example" = "$ids_hook" ]; then
+  pass=$((pass + 1)); printf '  ok    the hook names exactly the example rule ids\n'
+else
+  fail=$((fail + 1))
+  printf '  FAIL  rule ids disagree between the hook and the example\n'
+  printf '        example: %s\n' "$ids_example"
+  printf '        hook:    %s\n' "$ids_hook"
+fi
+
+# Every rule filled except one, whose EXAMPLE VALUE is kept with its marker
+# stripped — so the only thing left that can trip the check is that one value.
+fill_except() {                 # fill_except <n>; n=0 fills every rule
+  awk -v keep="$1" '
+    /^regex = / {
+      n++
+      sub(/ # ASSURANCE-PLACEHOLDER/, "")
+      if (n != keep) $0 = "regex = QQfilled" n "@somewhere\\.testQQ"
+    }
+    { print }' "$example" | sed "s/QQ/'/g"
+}
+
+rule_count="$(grep -c '^regex = ' "$example" || true)"
+if [ -z "$rule_count" ] || [ "$rule_count" -lt 1 ]; then
+  fail=$((fail + 1)); printf '  FAIL  no regex lines in the example — the extraction broke\n'
+else
+  i=1
+  while [ "$i" -le "$rule_count" ]; do
+    state "onlyval$i"
+    fill_except "$i" > "$h/onlyval$i/.gitleaks.local.toml"
+    expect_msg "example value $i, alone and unmarked, still blocks" 1 "example placeholders" \
+      run_block "$h/onlyval$i"
+    i=$((i + 1))
+  done
+fi
+
+# And the marker token itself, taken from the example rather than spelled here:
+# a fully-filled config carrying one marker must still be rejected. Rename the
+# token in the example and this reads the new one, appends it, and fails.
+marker="$(sed -n 's/^regex = .*\(# [A-Z][A-Z-]*\)$/\1/p' "$example" | sort -u | head -1)"
+if [ -z "$marker" ]; then
+  fail=$((fail + 1)); printf '  FAIL  no marker comment found in the example\n'
+else
+  state marker_left
+  fill_except 0 \
+    | awk -v m="$marker" 'BEGIN { d = 0 }
+        /^regex = / { if (!d) { $0 = $0 " " m; d = 1 } }
+        { print }' > "$h/marker_left/.gitleaks.local.toml"
+  expect_msg "the example marker token is one the hook rejects" 1 "example placeholders" \
+    run_block "$h/marker_left"
+fi
+
 # ═══════════════════════════════════════════════════════════════════════════
 # 3. Hook structure — the parts the extracted fragment cannot reach
 # ═══════════════════════════════════════════════════════════════════════════
@@ -486,8 +563,13 @@ fi
 # section-5 non-negotiable — under 30 green ticks. Found in review, 2026-09-08.
 #
 # Running the whole hook here is impractical (it wants git state, a gitleaks
-# binary, a node toolchain), so these are SOURCE assertions — which is the form
-# invariant 14 names: read the shell script and assert the set.
+# binary, a node toolchain), so these stay SOURCE assertions. Invariant 14 does
+# name that form — but this sentence used to stop there, and the seven greps it
+# was blessing were then defeated five ways, including by a hook with no secret
+# scan at all. Being a source assertion is not the qualification; what makes the
+# set below worth reading is the comment stripping, the whole-line anchoring,
+# the quote normalisation and the reachability check, each described where it is
+# built. A grep over raw source asserts how the hook is spelled.
 echo
 echo "hook structure"
 
