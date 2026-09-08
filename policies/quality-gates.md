@@ -127,12 +127,23 @@
 
     **And prove the suite can fail.** Break the gate deliberately and confirm the
     suite goes red — a test that cannot fail is decoration for exactly the reason
-    a gate that cannot fail is. Two traps make this less obvious than it sounds:
-    a fixture can trip an *earlier* branch than the one it names and pass for the
-    wrong reason, and a fixture can be shaped so the assertion never applies at
-    all. Both are the observation rule from Phase 3 — *a block is not a pass; the
-    output must name the check under test* — so assert the message, not only the
-    exit code.
+    a gate that cannot fail is.
+
+    Three traps make this less obvious than it sounds, and all three are the
+    Phase 3 observation rule — *a block is not a pass; the output must name the
+    check under test* — reappearing inside the tests:
+
+    - a fixture trips an **earlier** branch than the one it names;
+    - a fixture is shaped so the assertion **cannot apply** — a path that can
+      never match the property being asserted, or an empty result grepped for a
+      substring;
+    - an assertion pattern also matches text the check prints on **every**
+      failure, so it cannot tell one branch from another.
+
+    Assert the message and make the pattern specific to the branch. And when
+    mutating a gate to test the suite, revert with a **file copy** — `git
+    checkout --` reverts to the committed state and destroys uncommitted work in
+    the same file.
 
 ## Gate classes, and what each may bypass
 

@@ -16,6 +16,21 @@
 # author thought of.** When a review finds another, it is added here before it
 # is fixed. That is what makes this a ratchet rather than a snapshot.
 #
+# TWO TRAPS THIS SUITE HAS ALREADY FALLEN INTO, both of which made a case pass
+# for the wrong reason:
+#
+#   * A fixture that trips an EARLIER branch than the one it names. Assert the
+#     message, not only the exit code.
+#   * An assertion pattern that also matches the failure FOOTER. Every failure
+#     prints "A trigger that has passed without the row being answered…", so a
+#     case grepping for "has passed" matched on any failure whatsoever and could
+#     not tell one branch from another. Patterns name the trigger token.
+#
+# AND ONE ABOUT TESTING THIS SUITE: when mutating a gate to check the suite
+# notices, revert with a FILE COPY, never `git checkout --`. That reverts to the
+# committed state and silently destroys uncommitted work in the same file —
+# which it did, to two fixes, mid-verification.
+#
 # Fixtures are built at run time in a temp dir, never committed. In particular
 # no file in this repository is ever named `.gitleaks.local.toml` — the local
 # config states are written under that name only inside the temp dir, because
@@ -32,6 +47,19 @@ trap 'rm -rf "$work"' EXIT INT TERM
 
 pass=0
 fail=0
+
+tmpl="$ref/../../templates"
+# Every external input this suite reads gets the same guard. One of the three
+# had it and two did not, so moving either template made the suite die under
+# `set -e` after nineteen green ticks, with no summary line and no count —
+# non-zero, so a hook blocks, but anyone skimming sees only the ticks.
+for needed in \
+  "$ref/hooks/pre-commit" \
+  "$ref/scripts/check-decisions.mjs" \
+  "$tmpl/gitleaks.local.example.toml" \
+  "$tmpl/IMPLEMENTATION.skeleton.md"; do
+  [ -f "$needed" ] || { printf '❌ gates: required input missing: %s\n' "$needed"; exit 1; }
+done
 
 # expect <name> <wanted-rc> <cmd...>
 # expect_msg <name> <wanted-rc> <grep-pattern> <cmd...>
@@ -55,6 +83,12 @@ _check() {
     fail=$((fail + 1))
     printf '  FAIL  %s — exited %s but for the wrong reason\n' "$name" "$got"
     printf '        expected output matching: %s\n' "$pat"
+    printf '%s\n' "$out" | sed 's/^/          /'
+    return
+  fi
+  if printf '%s' "$out" | grep -qE '(/Users|/home)/[A-Za-z0-9._-]+'; then
+    fail=$((fail + 1))
+    printf '  FAIL  %s — printed an absolute home path\n' "$name"
     printf '%s\n' "$out" | sed 's/^/          /'
     return
   fi
@@ -115,7 +149,7 @@ tracker <<EOF
 $HEAD_OK
 | D-000 | open | — | T-001 | 2026-09-01 |
 EOF
-expect_msg "completed task id blocks (tickless rows)" 1 "has completed" run_decisions
+expect_msg "completed task id blocks (tickless rows)" 1 "trigger .T-001. has completed" run_decisions
 
 # REVIEW FINDING: the completed section was resolved by heading, and a miss
 # produced an empty set silently — the same silent pass, one layer up.
@@ -239,8 +273,103 @@ expect "missing tracker blocks" 1 run_decisions
 # actually ships. It did not, for the whole of its first life.
 sed -e 's/{{TIER}}/2/' -e 's/{{WHY}}/mixed/' -e 's/{{DATE_OR_PHASE}}/2099-01-01/' \
     -e 's/{{DATE}}/2026-09-07/' \
-    "$ref/../../templates/IMPLEMENTATION.skeleton.md" > "$d/docs/IMPLEMENTATION.md"
+    "$tmpl/IMPLEMENTATION.skeleton.md" > "$d/docs/IMPLEMENTATION.md"
 expect "the shipped tracker template runs" 0 run_decisions
+
+# ─── Cases added because a mutation survived without them ──────────────────
+
+# m1: the script's own header calls this its central design decision — detection
+# looser than parsing, so a row that will not parse is REPORTED. Dropping the
+# bold-tolerance from DECISION_LINE left the suite green, because the case named
+# for it had a single-row fixture and asserted the exit code only: the mutant
+# exited 1 through the ZERO-ROWS branch instead. A healthy row beside it is what
+# makes the branch observable.
+tracker <<EOF
+$HEAD_OK
+| D-000 | fine | — | 2099-01-01 | 2026-09-01 |
+| **D-001** | missing cells |
+EOF
+expect_msg "bolded malformed row beside a healthy one is reported" 1 "will not parse" run_decisions
+
+# m2: no fixture had a fired `-exit` trigger, so half the phase vocabulary was
+# unexercised and `p.major > major` could be replaced with `false`.
+tracker <<EOF
+$(printf '%s' "$HEAD_OK" | sed 's/P1-04/P3-02/')
+| D-000 | open | — | P2-exit | 2026-09-01 |
+EOF
+expect_msg "a fired phase-exit trigger blocks" 1 "trigger .P2-exit. has passed" run_decisions
+
+tracker <<EOF
+$(printf '%s' "$HEAD_OK" | sed 's/P1-04/P2-07/')
+| D-000 | open | — | P2-exit | 2026-09-01 |
+EOF
+expect "an unfired phase-exit trigger passes" 0 run_decisions
+
+# m14: `token <= today` could become `<` — a trigger dated today never fires.
+tracker <<EOF
+$HEAD_OK
+| D-000 | open | — | $(date -u +%Y-%m-%d) | 2026-09-01 |
+EOF
+expect_msg "a trigger dated today has passed" 1 "trigger date .* has passed" run_decisions
+
+# m13: CLOSED could drop its date requirement, so a bare "Closed" closes a row.
+tracker <<EOF
+$HEAD_OK
+| D-000 | **Closed** — no date | — |  | 2026-09-01 |
+EOF
+expect_msg "a closure with no date does not close a row" 1 "no trigger" run_decisions
+
+# m8: `standing` is an escape hatch whose only mitigation is being visible.
+# Deleting the notice made those rows pass in total silence.
+tracker <<EOF
+$HEAD_OK
+| D-000 | open | — | standing | 2026-09-01 |
+EOF
+expect_msg "a standing row is announced, not silent" 0 "STANDING" run_decisions
+
+# m15: TASK_SECTIONS could drop `in progress` and `blocked` unnoticed, because
+# every fixture put its task in Up next or Recently completed. A trigger naming
+# work that is in progress is the ordinary case.
+tracker <<'EOF'
+## Current state
+- **Phase:** P1-04 — x
+## In progress
+| ID | Task | Owner | Branch |
+| --- | --- | --- | --- |
+| T-007 | mid-flight | agent | t-007-slug |
+## Recently completed
+| ID | Task | PR | Merged |
+| --- | --- | --- | --- |
+| T-001 | shipped | #12 | 2026-09-01 |
+## Open decisions
+| ID | Decision needed | Recommendation | Trigger | Raised |
+| --- | --- | --- | --- | --- |
+| D-000 | open | — | T-007 | 2026-09-01 |
+EOF
+expect "a trigger naming in-progress work resolves" 0 run_decisions
+
+# m3: every fixture had Trigger at the same index, so reading the header rather
+# than a fixed column was an untested claim.
+tracker <<'EOF'
+## Current state
+- **Phase:** P1-04 — x
+## Open decisions
+| ID | Trigger | Decision needed | Recommendation | Raised |
+| --- | --- | --- | --- | --- |
+| D-000 | 2026-01-01 | open | — | 2026-09-01 |
+EOF
+expect_msg "the Trigger column is found by header, not index" 1 "trigger date 2026-01-01 has passed" run_decisions
+
+# m4: the inline `**Trigger:**` form is documented as still in use.
+tracker <<'EOF'
+## Current state
+- **Phase:** P3-01 — x
+## Open decisions
+| ID | Decision needed | Recommendation | Raised |
+| --- | --- | --- | --- |
+| D-000 | old-style row | — **Trigger:** P1-start | 2026-09-01 |
+EOF
+expect_msg "the inline Trigger form still parses" 1 "trigger .P1-start. has passed" run_decisions
 
 # ═══════════════════════════════════════════════════════════════════════════
 # 2. The pre-commit local-config states
@@ -261,7 +390,7 @@ fi
 { printf 'repo_root="$1"\n'; cat "$h/block.sh"; printf '\nexit 0\n'; } > "$h/probe.sh"
 run_block() { sh "$h/probe.sh" "$1"; }
 
-example="$ref/../../templates/gitleaks.local.example.toml"
+example="$tmpl/gitleaks.local.example.toml"
 
 state() {                       # state <name> [awk-program]
   mkdir -p "$h/$1"
@@ -302,8 +431,22 @@ state stripped;   sed 's/ # ASSURANCE-PLACEHOLDER//' "$example" > "$h/stripped/.
 expect_msg "markers deleted, values kept, blocks" 1 "example placeholders" run_block "$h/stripped"
 
 # REVIEW FINDING: the real-name alternative could not match its own example.
-state partly;     SKIP4=1 fill > "$h/partly/.gitleaks.local.toml"
+state partly;     SKIP4=1 fill > "$h/partly/.gitleaks.local.toml"; SKIP4=
 expect_msg "one rule left as the example blocks" 1 "example placeholders" run_block "$h/partly"
+
+# REVIEW FINDING: `example\.invalid` could not match the example's own
+# `your\.name@example\.invalid` — a literal backslash sits between `example` and
+# the dot — so BOTH email rules could be left as shipped and pass, with the
+# personal-email layer armed against a fake address. The one partial-fill
+# fixture left rule 4 unfilled, which is one of the two the pattern DID reach:
+# it was shaped around the working half.
+state emails_unfilled
+awk '/^regex = /{sub(/ # ASSURANCE-PLACEHOLDER/,""); n++
+  if (n==3) $0="regex = QQ(/Users/someuser|/home/someuser)QQ"
+  else if (n==4) $0="regex = QQ(?i)Realfirst\\s+ReallastQQ"}
+  {print}' "$example" | sed "s/QQ/'/g" > "$h/emails_unfilled/.gitleaks.local.toml"
+expect_msg "both email rules left as the example blocks" 1 "example placeholders" \
+  run_block "$h/emails_unfilled"
 
 # REVIEW FINDING: an existing file is not an armed file.
 state empty;      : > "$h/empty/.gitleaks.local.toml"
@@ -329,6 +472,63 @@ if [ -n "$leak" ]; then
   fail=$((fail + 1)); printf '  FAIL  rejection output echoes file content\n'
 else
   pass=$((pass + 1)); printf '  ok    rejection output is content-free\n'
+fi
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 3. Hook structure — the parts the extracted fragment cannot reach
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# Section 2 extracts ONE block of the hook, so everything above and below it is
+# unexercised — and what sits there is the no-bypass rule and the scan
+# invocations themselves. Mutations replacing the SKIP=gitleaks rejection with a
+# branch that honours it, or deleting the line that scans the local config, both
+# left this suite green: the secret scan could be made fully bypassable — a
+# section-5 non-negotiable — under 30 green ticks. Found in review, 2026-09-08.
+#
+# Running the whole hook here is impractical (it wants git state, a gitleaks
+# binary, a node toolchain), so these are SOURCE assertions — which is the form
+# invariant 14 names: read the shell script and assert the set.
+echo
+echo "hook structure"
+
+hook="$ref/hooks/pre-commit"
+
+assert_src() {                  # assert_src <name> <1=want-found|0=want-absent> <pattern>
+  name="$1"; want="$2"; pat="$3"
+  if grep -qE "$pat" "$hook"; then found=1; else found=0; fi
+  if [ "$found" -eq "$want" ]; then
+    pass=$((pass + 1)); printf '  ok    %s\n' "$name"
+  else
+    fail=$((fail + 1))
+    printf '  FAIL  %s\n' "$name"
+    printf '        pattern: %s\n' "$pat"
+  fi
+}
+
+assert_src "SKIP=gitleaks is rejected, not honoured" 1 '\*",gitleaks,"\*\)'
+assert_src "the rejection says so and exits" 1 'SKIP=gitleaks is not supported'
+assert_src "no branch honours a gitleaks skip" 0 'is_skipped[[:space:]]+gitleaks'
+assert_src "the committed config is scanned" 1 'protect --staged.*gitleaks\.toml'
+assert_src "the local config is scanned when present" 1 'protect --staged.*gitleaks\.local\.toml'
+
+# THE SKIPPABLE SET IS EXACTLY {lint, format} — the example invariant 14 gives by
+# name. Adding a skip for another gate is three lines of shell.
+skips="$(grep -oE 'is_skipped [a-z]+' "$hook" | awk '{print $2}' | sort -u | tr '\n' ' ')"
+if [ "$skips" = "format lint " ]; then
+  pass=$((pass + 1)); printf '  ok    the skippable set is exactly {lint, format}\n'
+else
+  fail=$((fail + 1))
+  printf '  FAIL  the skippable set changed — got: %s\n' "$skips"
+  printf '        Adding a skip is a decision; update this assertion deliberately.\n'
+fi
+
+# The scan must run AFTER the formatters, so it sees post-formatting content.
+fmt_line="$(grep -n 'lint-staged' "$hook" | head -1 | cut -d: -f1)"
+scan_line="$(grep -n 'protect --staged' "$hook" | head -1 | cut -d: -f1)"
+if [ -n "$fmt_line" ] && [ -n "$scan_line" ] && [ "$scan_line" -gt "$fmt_line" ]; then
+  pass=$((pass + 1)); printf '  ok    the secret scan runs after formatting\n'
+else
+  fail=$((fail + 1)); printf '  FAIL  ordering: formatting %s, first scan %s\n' "$fmt_line" "$scan_line"
 fi
 
 # ═══════════════════════════════════════════════════════════════════════════

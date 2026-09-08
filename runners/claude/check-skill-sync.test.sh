@@ -25,7 +25,14 @@ fail=0
 # check <name> <wanted-rc> <grep-pattern-or-empty> <env-assignments...> --
 _run() {
   name="$1"; want="$2"; pat="$3"; shift 3
-  out="$(env "$@" sh "$script" 2>&1)" && got=0 || got=$?
+  # CLEAR THE SCRIPT'S OWN VARIABLES FIRST. `env` without this inherits the
+  # caller's, so on a machine where the maintainer legitimately sets
+  # ASSURANCE_SKILL_NOT_INSTALLED=1 — the documented opt-out — it reached every
+  # case and six of them failed. The hook needs that variable set there and
+  # breaks when it is, so neither arm could commit: a deadlock, one commit after
+  # the regression this suite exists to prevent. Found in review, 2026-09-08.
+  out="$(env ASSURANCE_SKILL_NOT_INSTALLED= ASSURANCE_SKILL_INSTALL_DIR= "$@" \
+    sh "$script" 2>&1)" && got=0 || got=$?
   if [ "$got" -ne "$want" ]; then
     fail=$((fail + 1)); printf '  FAIL  %s — wanted exit %s, got %s\n' "$name" "$want" "$got"
     printf '%s\n' "$out" | sed 's/^/          /'; return
@@ -44,8 +51,12 @@ _run() {
 
 echo "check-skill-sync.sh"
 
-# In sync — the real installed copy, whatever it is on this machine.
-_run "in sync passes" 0 "copies agree"
+# In sync — against a FIXTURE, not the machine's real installed copy. Reading
+# the real one made this case unpassable on a machine with no skill installed,
+# and duplicated what the hook already checks one line earlier.
+mkdir -p "$work/insync/bootstrap-assurance"
+cp "$here/skill/bootstrap-assurance/SKILL.md" "$work/insync/bootstrap-assurance/SKILL.md"
+_run "in sync passes" 0 "copies agree" "ASSURANCE_SKILL_INSTALL_DIR=$work/insync"
 
 # Missing installed copy fails closed.
 _run "missing installed copy blocks" 1 "installed copy is missing" \
@@ -85,6 +96,28 @@ _run "HOME empty prints no absolute path" 1 "" \
 mkdir -p "$work/drifted/bootstrap-assurance"
 _run "drift from a home-shaped dir prints no absolute path" 1 "have drifted" \
   "ASSURANCE_SKILL_INSTALL_DIR=$work/drifted" "HOME=$work"
+
+# The printed remedy must be runnable as printed. `~` does not expand inside
+# double quotes, so `mkdir -p "$(dirname "~/.claude/...")"` creates a directory
+# literally named `~`.
+# THE FIXTURE HAS TO REACH THE BRANCH. Clearing the install dir falls back to a
+# path under $HOME — but on a machine where the copies agree the script exits 0
+# and prints no remedy at all, so this asserted against an empty string and
+# passed vacuously. It needs a MISSING install dir that is under $HOME, so the
+# remedy is printed and the tilde branch is the one that formats it.
+missing_home="$work/fakehome"
+mkdir -p "$missing_home"
+remedy="$(env ASSURANCE_SKILL_NOT_INSTALLED= HOME="$missing_home" \
+  ASSURANCE_SKILL_INSTALL_DIR="$missing_home/.claude/skills" \
+  sh "$script" 2>&1 | grep -E '^ +(cp|mkdir)' || true)"
+if [ -z "$remedy" ]; then
+  fail=$((fail + 1)); printf '  FAIL  no remedy printed — this case exercised nothing\n'
+elif printf '%s' "$remedy" | grep -q '"~'; then
+  fail=$((fail + 1)); printf '  FAIL  printed remedy quotes ~, which will not expand\n'
+  printf '%s\n' "$remedy" | sed 's/^/          /'
+else
+  pass=$((pass + 1)); printf '  ok    printed remedy is runnable as printed\n'
+fi
 
 echo
 if [ "$fail" -gt 0 ]; then

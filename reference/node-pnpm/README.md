@@ -41,6 +41,8 @@ the fail-closed plumbing that a naive port would miss.
 | `scripts/install-gitleaks.sh`            | Pinned scanner download with PATH fallback and fail-closed missing-binary behavior                                                         |
 | `scripts/check-decisions.mjs`            | Decision-trigger gate: fails when an open decision's trigger has already passed. Fail-closed on a missing or renamed completed section, an unparseable table, zero rows, an unresolvable phase where one is needed, or a trigger resolving to no task id |
 
+| `test/gates.test.sh`                     | Regression suite for the two gates above — fixtures for every state a review found, plus source assertions that the skippable set stays `{lint, format}`, that `SKIP=gitleaks` is rejected rather than honoured, and that both scanner configs are actually scanned |
+
 ## Known gaps (policy leads, reference lags)
 
 - **`scripts/check-decisions.mjs` is not wired into anything here.** BOOTSTRAP Phase 2

@@ -96,7 +96,14 @@ let text;
 try {
   text = readFileSync(resolve(REPO_ROOT, TRACKER), "utf8");
 } catch (err) {
-  die(`❌ decisions: cannot read ${TRACKER} — ${err.message}`, "   A check that cannot evaluate must block.");
+  // `err.code`, never `err.message`: the message carries the ABSOLUTE path, and
+  // this output is pasted into the verification matrix — an absolute home path
+  // there writes the local username into a committed file forever. Found in
+  // review, 2026-09-08.
+  die(
+    `❌ decisions: cannot read ${TRACKER} (${err.code ?? "unreadable"}).`,
+    "   A check that cannot evaluate must block.",
+  );
 }
 
 // ── The section ─────────────────────────────────────────────────────────────

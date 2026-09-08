@@ -60,7 +60,10 @@ installed="${ASSURANCE_SKILL_INSTALL_DIR:-$HOME/.claude/skills}/bootstrap-assura
 # full path — an absolute path in the output this comment says gets pasted.
 tilde() {
   case "$1" in
-    "${HOME:-/nonexistent}"/*) printf '~%s' "${1#"${HOME:-/nonexistent}"}" ;;
+    # `$HOME/...`, not `~/...`: the remedy is printed inside double quotes, where
+    # `~` does not expand — `mkdir -p "$(dirname "~/x")"` makes a directory
+    # literally named `~`. Found in review, 2026-09-08.
+    "${HOME:-/nonexistent}"/*) printf '$HOME%s' "${1#"${HOME:-/nonexistent}"}" ;;
     *) printf '$ASSURANCE_SKILL_INSTALL_DIR/bootstrap-assurance/SKILL.md' ;;
   esac
 }
