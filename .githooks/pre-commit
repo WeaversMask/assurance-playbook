@@ -3,8 +3,13 @@
 #
 # SCOPE, deliberately narrow. This repo does NOT self-apply the playbook — it has
 # no remote, no CI and one maintainer, and full self-application would be
-# ceremony. Two things earn their place, and both were earned rather than
+# ceremony. Three things earn their place, and each was earned rather than
 # assumed:
+#
+# (This sentence said "Two things ... and both" while three were listed below
+# it, for as long as the third has existed — in the hook whose own item 2 exists
+# because stated counts go stale. Fixed on sight; it is the sixth count error
+# recorded on this branch.)
 #
 #   1. The skill-copy freshness check. The two copies drifted for a full
 #      release, leaving guidance here that the copy which actually runs lacked.
@@ -22,6 +27,13 @@
 #      every bootstrapped repo. Every case in those suites is one a review
 #      found, not one their author thought of. Running them here is the only
 #      thing standing between a plausible edit and a fifth round of that.
+#
+#      `check-docs.test.sh` joined them after the doc gate — the newest of the
+#      three, and the only one that had shipped with no suite at all — lost six
+#      ways on its first adversarial pass, four of them silently, printing its
+#      success line with its counts unchanged while the defect walked through.
+#      Invariant 14 is not satisfied by a gate being careful; it is satisfied by
+#      a suite that fails when the gate stops working.
 #
 # Adding anything else is a decision to make on purpose, not by accretion.
 #
@@ -46,4 +58,5 @@ repo_root="$(git rev-parse --show-toplevel)"
 sh "$repo_root/runners/claude/check-skill-sync.sh"
 sh "$repo_root/runners/claude/check-skill-sync.test.sh"
 sh "$repo_root/reference/node-pnpm/test/gates.test.sh"
+sh "$repo_root/scripts/check-docs.test.sh"
 node "$repo_root/scripts/check-docs.mjs"

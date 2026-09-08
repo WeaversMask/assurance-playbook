@@ -493,9 +493,53 @@ echo "hook structure"
 
 hook="$ref/hooks/pre-commit"
 
-assert_src() {                  # assert_src <name> <1=want-found|0=want-absent> <pattern>
-  name="$1"; want="$2"; pat="$3"
-  if grep -qE "$pat" "$hook"; then found=1; else found=0; fi
+# ─────────────────────────────────────────────────────────────────────────────
+# THESE ASSERTIONS TESTED SPELLINGS, AND A SPELLING IS NOT A PROPERTY.
+#
+# The seven greps that stood here ran over the hook's raw source. A review
+# defeated all seven, five independent ways. The worst was a hook with NO SECRET
+# SCAN AT ALL: commenting out both invocations leaves the text in place, so
+# "the committed config is scanned", "the local config is scanned when present"
+# and "the secret scan runs after formatting" all reported ok against a hook
+# that scanned nothing. The other four: an `exit 0` inserted before the scan; a
+# skip spelled `is_skipped "secrets"`, whose quotes hid it from BOTH the
+# want-absent check and the set enumeration — one line of shell adding a bypass
+# while the suite printed "the skippable set is exactly {lint, format}", which
+# is invariant 14's own worked example defeating the assertion written to
+# satisfy it; a live invocation reading `--config "${GL_CONF:-…}"` behind
+# commented decoys; and the ordering check, which anchored on the first line
+# mentioning `lint-staged` — a COMMENT on line 4 — instead of the invocation.
+#
+# Three changes make these test properties instead:
+#   * comment LINES are stripped before anything is matched;
+#   * the scan assertions anchor at the start of a line and match the whole
+#     invocation, so neither a trailing-comment decoy nor a variable holding the
+#     filename passes;
+#   * reachability is asserted directly — no clean exit between the formatter
+#     and the scan.
+#
+# WHAT THIS STILL DOES NOT CHECK, per the mechanism rubric's criterion 7: it
+# does not execute the hook. A bypass expressed as control flow this parser does
+# not model — an `exec`, a trap, a sourced file, `exit $((0))` — walks through.
+# Executing it needs gitleaks, pnpm and a staged fixture repo; that is the next
+# round's work, and naming it here is not the same as having done it.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# The code-only view: lines whose first non-blank character is `#` are dropped.
+# Deliberately NOT `sed 's/#.*//'` — the opt-out marker check greps for a
+# literal `#` inside a single-quoted regex, and stripping from the first `#`
+# would mangle the one line that matters most.
+code="$work/hook.code"
+grep -v '^[[:space:]]*#' "$hook" > "$code"
+
+# Quote-normalised, so `is_skipped "secrets"` cannot hide from either the
+# want-absent check or the set enumeration.
+norm="$work/hook.norm"
+sed 's/is_skipped[[:space:]]*['"'"'"]/is_skipped /g' "$code" > "$norm"
+
+assert_code() {                 # assert_code <name> <1=want|0=want-absent> <file> <pattern>
+  name="$1"; want="$2"; src="$3"; pat="$4"
+  if grep -qE "$pat" "$src"; then found=1; else found=0; fi
   if [ "$found" -eq "$want" ]; then
     pass=$((pass + 1)); printf '  ok    %s\n' "$name"
   else
@@ -505,15 +549,24 @@ assert_src() {                  # assert_src <name> <1=want-found|0=want-absent>
   fi
 }
 
-assert_src "SKIP=gitleaks is rejected, not honoured" 1 '\*",gitleaks,"\*\)'
-assert_src "the rejection says so and exits" 1 'SKIP=gitleaks is not supported'
-assert_src "no branch honours a gitleaks skip" 0 'is_skipped[[:space:]]+gitleaks'
-assert_src "the committed config is scanned" 1 'protect --staged.*gitleaks\.toml'
-assert_src "the local config is scanned when present" 1 'protect --staged.*gitleaks\.local\.toml'
+assert_code "SKIP=gitleaks is rejected, not honoured" 1 "$code" '\*",gitleaks,"\*\)'
+assert_code "the rejection says so and exits" 1 "$code" 'SKIP=gitleaks is not supported'
+assert_code "no branch honours a gitleaks skip" 0 "$norm" 'is_skipped[[:space:]]+gitleaks'
+
+# The two scan invocations must be LIVE CODE in their exact form. Anchored at
+# the start of a line so a trailing-comment decoy is not a match, and matched
+# whole so `--config "${GL_CONF:-$repo_root/.gitleaks.toml}"` — which still
+# contains the literal filename — cannot pass as the real thing. Any deliberate
+# reformatting of these two lines is a decision; update the assertion with it.
+assert_code "the committed config is scanned, as live code" 1 "$code" \
+  '^[[:space:]]*"\$gitleaks_bin" protect --staged --redact --config "\$repo_root/\.gitleaks\.toml" --no-banner[[:space:]]*$'
+assert_code "the local config is scanned, as live code" 1 "$code" \
+  '^[[:space:]]*"\$gitleaks_bin" protect --staged --redact --config "\$repo_root/\.gitleaks\.local\.toml" --no-banner[[:space:]]*$'
 
 # THE SKIPPABLE SET IS EXACTLY {lint, format} — the example invariant 14 gives by
-# name. Adding a skip for another gate is three lines of shell.
-skips="$(grep -oE 'is_skipped [a-z]+' "$hook" | awk '{print $2}' | sort -u | tr '\n' ' ')"
+# name. Read from the quote-normalised view: the whole point of the bypass this
+# replaced was that quoting the argument removed it from this enumeration.
+skips="$(grep -oE 'is_skipped [a-z]+' "$norm" | awk '{print $2}' | sort -u | tr '\n' ' ')"
 if [ "$skips" = "format lint " ]; then
   pass=$((pass + 1)); printf '  ok    the skippable set is exactly {lint, format}\n'
 else
@@ -522,13 +575,29 @@ else
   printf '        Adding a skip is a decision; update this assertion deliberately.\n'
 fi
 
-# The scan must run AFTER the formatters, so it sees post-formatting content.
-fmt_line="$(grep -n 'lint-staged' "$hook" | head -1 | cut -d: -f1)"
-scan_line="$(grep -n 'protect --staged' "$hook" | head -1 | cut -d: -f1)"
+# Ordering, anchored on the INVOCATION rather than on any line mentioning it.
+fmt_line="$(grep -n 'pnpm exec lint-staged' "$code" | head -1 | cut -d: -f1)"
+scan_line="$(grep -nE '^[[:space:]]*"\$gitleaks_bin" protect --staged' "$code" | head -1 | cut -d: -f1)"
 if [ -n "$fmt_line" ] && [ -n "$scan_line" ] && [ "$scan_line" -gt "$fmt_line" ]; then
   pass=$((pass + 1)); printf '  ok    the secret scan runs after formatting\n'
 else
-  fail=$((fail + 1)); printf '  FAIL  ordering: formatting %s, first scan %s\n' "$fmt_line" "$scan_line"
+  fail=$((fail + 1)); printf '  FAIL  ordering: formatter %s, first scan %s\n' "$fmt_line" "$scan_line"
+fi
+
+# REACHABILITY. Everything above says the scan is written; this says control can
+# actually get there. `exit 0` only — the several `exit 1`s in that span are the
+# personal-identifier layer refusing to proceed, which is the gate working.
+clean_exit=1
+if [ -n "$fmt_line" ] && [ -n "$scan_line" ] && [ "$scan_line" -gt "$((fmt_line + 1))" ]; then
+  clean_exit="$(sed -n "$((fmt_line + 1)),$((scan_line - 1))p" "$code" \
+    | grep -cE '(^|[^[:alnum:]_])exit[[:space:]]+0([^0-9]|$)' || true)"
+fi
+if [ "$clean_exit" = "0" ]; then
+  pass=$((pass + 1)); printf '  ok    nothing exits cleanly between the formatter and the scan\n'
+else
+  fail=$((fail + 1))
+  printf '  FAIL  a clean exit sits between the formatter and the scan\n'
+  printf '        The scan lines can be present and still never run.\n'
 fi
 
 # ═══════════════════════════════════════════════════════════════════════════

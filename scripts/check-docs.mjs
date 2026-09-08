@@ -57,7 +57,7 @@
 // delete it rather than loosening it.
 
 import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
-import { resolve, join, dirname } from "node:path";
+import { resolve, join, dirname, sep } from "node:path";
 import process from "node:process";
 import console from "node:console";
 
@@ -75,8 +75,23 @@ function markdownFiles(dir, acc = []) {
   for (const name of readdirSync(dir)) {
     if (name === ".git" || name === "node_modules") continue;
     const full = join(dir, name);
-    if (statSync(full).isDirectory()) markdownFiles(full, acc);
-    else if (name.endsWith(".md")) acc.push(full);
+    // A broken symlink threw a raw ENOENT out of statSync and took the whole
+    // gate with it. That exits non-zero, so it fails closed — but by accident,
+    // with a stack trace where a finding belongs. An unreadable entry in the
+    // docs tree IS a finding; report it as one.
+    let stat;
+    try {
+      stat = statSync(full);
+    } catch {
+      note(`${full.slice(ROOT.length + 1)}: cannot be read (broken symlink or unreadable)`);
+      continue;
+    }
+    if (stat.isDirectory()) markdownFiles(full, acc);
+    // `.endsWith(".md")` is case-SENSITIVE while the filesystem underneath is
+    // not, so a file named NOTES.MD was never scanned and the file count did
+    // not move. Same root cause as the case bug in checkPath, from the other
+    // side: one comparison too strict, one too loose.
+    else if (name.toLowerCase().endsWith(".md")) acc.push(full);
   }
   return acc;
 }
@@ -126,13 +141,81 @@ const FENCE = /^[ \t]*```[a-z]*\n([\s\S]*?)^[ \t]*```/gm;
 const FENCE_TOKEN = /(?<![A-Za-z0-9._~/-])([A-Za-z0-9][A-Za-z0-9._-]*(?:\/[A-Za-z0-9._-]+)+)/g;
 const FENCE_EXT = /\.(md|sh|mjs|js|cjs|toml|yml|yaml|json|ts|tsx)$/;
 
+/**
+ * `n/a` and friends: prose that is a fraction, not a path. The original test —
+ * "any segment shorter than two characters" — excluded far more than that. It
+ * silently dropped EVERY citation containing a one-character directory,
+ * unchecked AND uncounted, so `policies/x/process.md` bought an exemption by
+ * having an `x` in it. Requiring the absence of a file extension keeps `n/a`
+ * out while keeping extensionless real files (`.githooks/pre-commit`,
+ * `hooks/pre-commit` — exactly the files this repo keeps moving) in.
+ */
+function isProseFraction(raw) {
+  if (/\.[A-Za-z0-9]+$/.test(raw)) return false;
+  return raw.split("/").filter(Boolean).some((seg) => seg.length < 2);
+}
+
 let pathCitations = 0;
+
+/**
+ * Resolve `raw` under `base`, one segment at a time, against the real directory
+ * listing.
+ *
+ * WHY NOT existsSync. It defers to the filesystem, and APFS here is
+ * case-INSENSITIVE while the Linux runners these projects use for CI are not.
+ * `Policies/Process.md` resolved locally, was a dead link on GitHub, and would
+ * fail in CI — the gate reported "all resolve" throughout. A doc gate whose
+ * answer depends on which machine ran it is not a gate.
+ *
+ * Returns the real (correctly-cased) path, or null when nothing matches.
+ */
+function resolveExact(base, raw) {
+  let dir = base;
+  const real = [];
+  for (const seg of raw.split("/")) {
+    if (seg === "" || seg === ".") continue;
+    if (seg === "..") {
+      dir = dirname(dir);
+      real.push("..");
+      continue;
+    }
+    let entries;
+    try {
+      entries = readdirSync(dir);
+    } catch {
+      return null;
+    }
+    const exact = entries.includes(seg)
+      ? seg
+      : entries.find((e) => e.toLowerCase() === seg.toLowerCase());
+    if (!exact) return null;
+    real.push(exact);
+    dir = join(dir, exact);
+  }
+  // A `../` citation must not escape the repository. One that did would match
+  // against whatever sits beside the clone on this machine — green here, and
+  // meaningless in any other checkout.
+  //
+  // NOT A PREFIX TEST. `startsWith(ROOT)` is satisfied by any SIBLING whose name
+  // merely begins with the repo's — `assurance-playbook-scratch` passes it — so
+  // the first version of this guard let the escape it was written to stop walk
+  // straight through. Compare against the boundary, not the string.
+  const abs = resolve(dir);
+  if (abs !== ROOT && !abs.startsWith(ROOT + sep)) return null;
+  return real.join("/");
+}
 
 /** Report a cited path unless it resolves from the root or from the citing file. */
 function checkPath(file, raw) {
   pathCitations += 1;
-  if (existsSync(join(ROOT, raw))) return;
-  if (existsSync(join(dirname(file), raw))) return;
+  const want = raw.split("/").filter((s) => s !== "" && s !== ".").join("/");
+  for (const base of [ROOT, dirname(file)]) {
+    const real = resolveExact(base, raw);
+    if (real === null) continue;
+    if (real === want) return;
+    note(`${rel(file)}: cites \`${raw}\`, which differs in case from \`${real}\``);
+    return;
+  }
   note(`${rel(file)}: cites \`${raw}\`, which does not exist`);
 }
 
@@ -146,7 +229,7 @@ for (const file of files) {
       const raw = m[1];
       if (!FENCE_EXT.test(raw)) continue;
       if (TARGET_ROOTS.has(raw.split("/")[0])) continue;
-      if (raw.split("/").filter(Boolean).some((seg) => seg.length < 2)) continue;
+      if (isProseFraction(raw)) continue;
       checkPath(file, raw);
     }
   }
@@ -168,7 +251,7 @@ for (const file of files) {
       // an extension test looked simpler and silently dropped every hook path
       // (`hooks/pre-commit`, `.githooks/pre-commit`), which are exactly the
       // files this repo moves around.
-      if (raw.split("/").filter(Boolean).some((seg) => seg.length < 2)) continue;
+      if (isProseFraction(raw)) continue;
       // Resolved from the repo root, and also relative to the citing file — a
       // citation inside reference/node-pnpm/ may legitimately be either.
       checkPath(file, raw);
@@ -246,8 +329,27 @@ const cataloguePath = join(ROOT, "decisions", "catalogue.md");
 if (!existsSync(cataloguePath)) die("❌ docs: decisions/catalogue.md is missing.");
 const catalogue = readFileSync(cataloguePath, "utf8");
 
-const blocks = catalogue.split(/^(?:### |## )(?=T0|[A-G]\d)/m).slice(1);
+// THE ANCHOR WAS THE VULNERABILITY. Splitting on `T0|[A-G]\d` meant an entry
+// whose id fell outside that range was not a boundary — it was ABSORBED into
+// the entry above it. It never appeared in `blocks`, so the `N of the M
+// entries` claim still matched, and it was never checked for the two fields
+// check 4 exists to enforce. The catalogue is designed to grow, and the letters
+// grow out of range at H.
+const blocks = catalogue.split(/^(?:### |## )(?=[A-Z]\d)/m).slice(1);
 if (blocks.length === 0) die("❌ docs: no catalogue entries parsed — the entry heading shape changed.");
+
+// Widening the anchor fixes the ids we can predict. This catches the ones we
+// cannot: heading ids are counted INDEPENDENTLY of the split, so any shape the
+// split still fails to treat as a boundary (`AA1`, a lowercase id) shows up as
+// a disagreement rather than as silence. A count derived from the same regex as
+// the thing it counts can only ever agree with itself.
+const headingIds = [...catalogue.matchAll(/^(?:### |## )([A-Z]+\d+)\b/gm)].map((m) => m[1]);
+if (headingIds.length !== blocks.length) {
+  note(
+    `catalogue: ${headingIds.length} entry heading(s) but ${blocks.length} parsed block(s) — ` +
+      `an entry id outside the anchored range is being absorbed into the entry above it`,
+  );
+}
 
 let tierGated = 0;
 for (const block of blocks) {
