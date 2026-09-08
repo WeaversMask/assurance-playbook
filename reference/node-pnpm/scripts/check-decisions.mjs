@@ -25,10 +25,15 @@
 // tried to keep three documents in agreement would fire on wording and be
 // deleted within a month.
 //
-// ─── FAIL-CLOSED, in five ways ─────────────────────────────────────────────
-// A missing section, an unparseable table, zero rows, an unreadable current
-// phase, or a trigger naming an id that resolves to nothing all FAIL. A check
-// that examined nothing must never read as clean.
+// ─── FAIL-CLOSED ───────────────────────────────────────────────────────────
+// A missing tracker, a missing section, an unparseable table, zero rows, a
+// trigger naming an id that resolves to no task, and a trigger naming a task
+// with no completed section to resolve it against all FAIL. A check that
+// examined nothing must never read as clean.
+//
+// The current phase is resolved LAZILY and fails closed only when a
+// phase-boundary trigger actually needs it. Demanding it up front locked out
+// every tier-1 project, which has no phases and whose triggers are dates.
 //
 // Zero rows fails rather than reporting itself dormant: the tier decision itself
 // is recorded as a row here, so a table with no rows means the tracker was

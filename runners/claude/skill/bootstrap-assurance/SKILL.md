@@ -28,10 +28,12 @@ copy source).
    its **"The ordering rule"** preamble — then the six files in
    `policies/`. BOOTSTRAP.md is the installation order; follow it phase by
    phase in the **target project's repo**.
-2. **Phase 0 first, always.** Four things inline — project name, stack, the
-   **assurance tier**, and the pseudonymity decision — then work
-   `decisions/catalogue.md` in order, asking each entry whose tier and
-   applicability admit it.
+2. **Phase 0 first, always.** Five things inline — project name, stack, the
+   **assurance tier**, the public identity this repo commits as, and the
+   pseudonymity decision — then work `decisions/catalogue.md` in order, asking
+   each entry whose tier and applicability admit it. The identity is collected
+   here on both branches of the pseudonymity question, because the identity
+   gates install at every tier and Phase 1.2 needs it.
 
    **State the cost of declining before the first question**, not after the
    first decline: anything declined gets one row naming what brings it back;

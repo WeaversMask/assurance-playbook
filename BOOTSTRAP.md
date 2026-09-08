@@ -1,8 +1,9 @@
 # BOOTSTRAP — Instantiating the Assurance Playbook in a New Project
 
-> Written to be executed by a Claude Code agent (via the
-> `/bootstrap-assurance` skill) or by the maintainer manually, inside the
-> new project's repo. The policies in `policies/` are the normative
+> Written to be executed **by any agent, or by the maintainer by hand**, inside
+> the new project's repo. It assumes no particular harness; where one offers a
+> named entry point (for Claude Code, `/bootstrap-assurance`) that is a
+> convenience, not a requirement. The policies in `policies/` are the normative
 > content; this file is the installation order. **Do not copy the
 > `reference/node-pnpm/` files blindly** — they are one stack's worked
 > example; derive mechanisms for the target stack from the policies and
@@ -16,7 +17,7 @@ gauntlet — including the commits that install the remaining gates and the
 deliberate violations that prove them. Two consequences drive the phase
 order below, and neither is optional:
 
-- **Commit the foundation before arming anything** (Phase 1.7). That is
+- **Commit the foundation before arming anything** (Phase 1.8). That is
   the last commit that runs unhooked.
 - **The gates cannot be proven until the local patterns file exists**
   (HUMAN STOP at the end of Phase 2). While `.gitleaks.local.toml` is
@@ -86,7 +87,7 @@ safe reads as a punishment for declining:
 4. **The public identity this repo commits as** — display name plus the
    provider noreply address. Needed here on **both** branches of the next
    question, because the identity gates install at every tier and read this as
-   their single source of truth; it goes into `AGENTS.md` at Phase 1.5 and into
+   their single source of truth; it goes into `AGENTS.md` at Phase 1.6 and into
    repo-local git config at Phase 1.2. For a pseudonymous project, catalogue
    entry A2 decides whether the persona is fresh or shared — ask it here rather
    than later, since Phase 1.2 needs the answer.
@@ -136,7 +137,13 @@ instead of stalling the run.
    outputs, the local scanner-patterns file (`.gitleaks.local.toml`),
    local tool binaries.
 4. `LICENSE` + manifest license field, agreeing with each other.
-5. Process furniture from `templates/`: `AGENTS.md` (from
+5. **Write down Phase 0's answers**, which until now have lived only in the
+   conversation: create `docs/plan/decisions.md` for the defaults, the tracker's
+   Open decisions table for everything carrying a trigger (the tier row at
+   minimum), and an ADR per divergence. Phase 0 names these three homes but runs
+   before this directory exists, so this is the step that makes them real.
+
+6. Process furniture from `templates/`: `AGENTS.md` (from
    `templates/AGENTS.template.md`) as the onboarding home every agent reads —
    **placeholders filled, including the declared identity and the pseudonymity
    decision from Phase 0.5**, which live there rather than in a harness file so
@@ -149,17 +156,24 @@ instead of stalling the run.
    `docs/adr/`, `docs/guide/`, `docs/dev/`, `docs/architecture.md` stub),
    plus task/PR/handover/ADR templates. Trim anything inapplicable — the
    policies are the invariant, the file layout is convention.
-6. **Install the day-to-day policies into the repo** so sessions there
+
+   **Fill the placeholders Phase 0 answered** — project, branch, identity,
+   pseudonymity, tier. The rest name things that do not exist yet: the gate
+   commands, the declared rules' mechanisms, the decision check, and any
+   harness affordances. Those are filled at Phase 2.12, and leaving them
+   visible until then is better than guessing at them now.
+
+7. **Install the day-to-day policies into the repo** so sessions there
    never depend on this playbook being present: copy
    `policies/process.md` → `docs/plan/process.md`,
    `policies/documentation.md` → `docs/plan/documentation.md`, and
    `policies/quality-gates.md` → `docs/plan/quality-gates.md`, each
-   trimmed to the target stack (drop the stack-mapping tables, keep the
-   invariants). The templates and `CLAUDE.md` reference these
-   `docs/plan/` paths. The other three policies (secret, license,
+   trimmed to the target stack — drop what does not apply and keep the
+   invariants. The templates and `AGENTS.md` reference these `docs/plan/`
+   paths. The other three policies (secret, license,
    identity) are installation-time guides — their product is the gates
    themselves; they stay in the playbook.
-7. **Commit the foundation now**, before any gate is armed. This is the
+8. **Commit the foundation now**, before any gate is armed. This is the
    last commit that runs without hooks, and doing it here keeps Phase 2's
    install off the critical path of its own gates. Everything from Phase
    2 onwards is committed *through* the gates — which is the point.
@@ -181,11 +195,9 @@ safety class, which does not scale:
 | 4 identity gates | **safety** | every tier (A1 "no" selects the opt-out) |
 | 2 hook manager | prerequisite | every tier |
 | 5 commit conventions | quality | every tier |
-| 6 lint / format / static check | quality | every tier, where the stack has them |
-| 6b tests + coverage floors | quality | **tier 2+** |
-| 7 licence file + allowlist check | quality | every tier, where B2 applies |
-| 7b full-tree licence gate, notices, supply-chain controls | quality | **tier 2+** |
-| 8 review-evidence gate | quality | **tier 2+**, and only where a remote exists |
+| 6 quality gates | quality | lint, format and the static check at every tier where the stack has them; **tests and coverage floors from tier 2** |
+| 7 licence and supply chain | quality | the licence file and allowlist check at every tier where B2 applies; **the full-tree gate, notices and supply-chain controls from tier 2** |
+| 8 review-evidence gate | quality | **tier 2+**. Installed now; first exercised at Phase 3B, once Phase 4.1 creates the remote |
 | 9 freshness check per bootstrap-time generator | quality | every tier, where a generator exists |
 | 10 decision-trigger check | meta | **every tier** |
 | 11 budget gates | budget | **tier 3** — see below |
@@ -242,9 +254,12 @@ fresh install is the worst possible time to debug a misattributed error.
 
 10. **The decision-trigger check** ([process.md](policies/process.md), "Open
     decisions"): fails the build when an open row's trigger has already passed.
-    Fail-closed on a missing section, an unparseable table, zero rows, an
-    unreadable current phase, and a trigger naming an id that resolves to
-    nothing — a typo is a trigger that never fires. Hook **and** CI, like every
+    Fail-closed on a missing section, an unparseable table, zero rows, a
+    trigger naming an id that resolves to no task, a trigger naming a task with
+    no completed section to resolve it against, and — for a phase-boundary
+    trigger specifically — a current phase it cannot read. That last one is
+    conditional on purpose: a tier-1 project has no phases, and demanding one
+    locked those projects out of the gate entirely. Hook **and** CI, like every
     other gate here; where no remote exists yet, the CI half is an open
     obligation completed at Phase 4, not a silent omission.
 
@@ -263,6 +278,12 @@ fresh install is the worst possible time to debug a misattributed error.
     valve, budget overruns get taken unilaterally and invisibly, and people
     learn to route around the *safety* rule when what they needed was the budget
     one ([quality-gates.md](policies/quality-gates.md), gate classes).
+
+12. **Finish the furniture.** The placeholders Phase 1.6 left visible name
+    things that now exist: the root gate commands, the declared rules and the
+    tests proving each fires, the decision check, and any harness affordances.
+    Fill them, and confirm none remain — a template placeholder that survives
+    into a working repo is a claim nobody made.
 
 
 ### HUMAN STOP — the local personal-identifier patterns file
