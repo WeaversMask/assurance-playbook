@@ -49,22 +49,34 @@ below for the one exception.
 - **Agents never merge.** Branches and commits, yes; landing them is the
   maintainer's.
 
-## Self-application: exactly two things
+## Self-application: exactly three things
 
-This repo does not run the playbook on itself. Two exceptions earned their place:
+This repo does not run the playbook on itself. Three exceptions earned their
+place, each after something broke that nothing was watching:
 
 1. **The skill-copy freshness check.** The two copies drifted for a full release,
    leaving guidance here that the copy which actually runs did not have.
    `runners/claude/check-skill-sync.sh`.
-2. **Regression suites for the executable gates** —
+2. **`scripts/check-docs.mjs`** — path citations, `Phase N.M` cross-references,
+   phase item ordering, and the catalogue's own counts and fields. Eight of the
+   nine regressions on this branch were in markdown and none had mechanical
+   protection.
+
+   It checks **claims about the present that resolve to a name** and nothing
+   about wording — a doc gate that fires on phrasing is deleted within a week,
+   and one that tries to keep two documents in prose agreement fires on phrasing
+   by construction. Its ongoing cost is one maintained list: the roots that name
+   a *bootstrapped* project's tree (`docs/`, `src/`, …) rather than this one.
+
+3. **Regression suites for the executable gates** —
    `reference/node-pnpm/test/gates.test.sh` and
    `runners/claude/check-skill-sync.test.sh`. Invariant 14 says a gate that can
    be silently narrowed owes a regression test; these two gates were broken by
    their own fixes four times, once by a change that would have blocked the
    first commit of every bootstrapped repo.
 
-Both are armed by `core.hooksPath=.githooks`, which runs all three on every
-commit here.
+All are armed by `core.hooksPath=.githooks`, which runs them on every commit
+here.
 
 **If you change either gate, add the case that would have caught the change you
 are making, before you make it.** Every case in those suites is one a review

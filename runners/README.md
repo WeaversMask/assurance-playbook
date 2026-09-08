@@ -32,7 +32,7 @@ correctly set up.
 
 | Asset | What it does | Worth porting? |
 | --- | --- | --- |
-| `skill/bootstrap-assurance/SKILL.md` | An invocable entry point that walks `BOOTSTRAP.md` end to end, stopping at the two HUMAN STOPs. Encodes the ordering rule and the hard rules so a fresh session cannot skip them. | Only if your harness has a named-procedure mechanism. Otherwise the maintainer runs `BOOTSTRAP.md` directly — it is written to be executable by a human. |
+| `claude/skill/bootstrap-assurance/SKILL.md` | An invocable entry point that walks `BOOTSTRAP.md` end to end, stopping at the two HUMAN STOPs. Encodes the ordering rule and the hard rules so a fresh session cannot skip them. | Only if your harness has a named-procedure mechanism. Otherwise the maintainer runs `BOOTSTRAP.md` directly — it is written to be executable by a human. |
 | `CLAUDE.template.md` | Pointer plus delta: routes by role, sends the reader to `AGENTS.md` in full, then adds only what is Claude-specific — permission-prompt phrasing, harness affordances, and the blast-radius note that `.claude/` is local config running nowhere else. | The *pattern* — one auto-loaded entry file that points at the shared home rather than copying it — ports to any harness that auto-loads something. The content does not. |
 | `check-skill-sync.sh` | Fails when this repo's canonical skill copy and the installed one disagree. The skill has two copies and nothing else enforced their agreement; they drifted for a full release once. | Only if your harness also installs a copy of something this repo holds canonically. The rule it serves is `policies/documentation.md` invariant 1 — one home per doc — not `policies/quality-gates.md` invariant 11, which governs *generated* files and their generators. |
 
