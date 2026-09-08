@@ -159,6 +159,93 @@ printf '# Not in the repo\n' > "$work/tree-sibling/outside.md"
 printf '\nSee [outside](../tree-sibling/outside.md).\n' >> "$tree/README.md"
 expect_block "a ../ citation cannot escape into a sibling directory" "does not exist"
 
+# ── 8+9. REVIEW FINDINGS (round 7, external reviewer). The heading cross-check
+#       added by the previous commit was itself untested — replacing its
+#       condition with `if (false)` left this suite at 11 passed. And both
+#       expressions excluded LOWERCASE ids, so the one shape the cross-check
+#       exists to catch, in the form nobody would predict, walked past both.
+reset_tree
+cat >> "$tree/decisions/catalogue.md" <<'EOF'
+
+### AA1 — an id the block splitter does not treat as a boundary
+
+**Tier 2** — applies from tier 2 up.
+
+No Default and no Blind spot.
+EOF
+expect_block "an id the splitter misses is caught by the count" "entry heading"
+
+reset_tree
+cat >> "$tree/decisions/catalogue.md" <<'EOF'
+
+### h1 — a lowercase entry id
+
+**Tier 2** — applies from tier 2 up.
+
+No Default and no Blind spot.
+EOF
+expect_block "a lowercase entry id is not invisible" "entry heading|h1"
+
+# ── 7. REVIEW FINDING (round 7, external reviewer). `checkPath` returned on the
+#       FIRST base that resolved at all — so a citation matching EXACTLY relative
+#       to the citing file was reported as a case error whenever the root held a
+#       case-insensitive near-match. A correct citation rejected: the failure mode
+#       this repo says gets a doc gate deleted in its first week. Introduced by
+#       the case fix itself, and invisible until two directories differed only in
+#       case.
+reset_tree
+mkdir -p "$tree/reference/node-pnpm/Policies"
+printf '# p\n' > "$tree/reference/node-pnpm/Policies/Process.md"
+printf '\nCites `Policies/Process.md`.\n' >> "$tree/reference/node-pnpm/README.md"
+expect_clean "an exact match at either base beats a case near-miss"
+
+# ── 10+11. REVIEW FINDINGS (round 7, external reviewer). The one-character-
+#       segment repair still exempted EXTENSIONLESS citations, so
+#       `policies/x/pre-commit` and any `./`-prefixed path bought the exemption
+#       meant for `n/a`. And `.md` DISCOVERY became case-insensitive while
+#       `FENCE_EXT` stayed case-sensitive, so a fenced `.MD` citation was still
+#       invisible — half a fix, which reads as a whole one.
+reset_tree
+printf '\nCites `./hooks/missing-hook`.\n' >> "$tree/README.md"
+expect_block "a ./-prefixed extensionless citation is checked" "hooks/missing-hook"
+
+reset_tree
+printf '\nCites `policies/x/pre-commit`.\n' >> "$tree/README.md"
+expect_block "a one-char dir with no extension is checked" "policies/x/pre-commit"
+
+reset_tree
+printf '\n```sh\ncat policies/DOES-NOT-EXIST.MD\n```\n' >> "$tree/README.md"
+expect_block "a fenced citation with an uppercase extension is checked" "DOES-NOT-EXIST"
+
+# ── 12-16. REVIEW FINDING (round 7): five of this gate's responsibilities could
+#       each be disabled outright — `if (false)` — with this suite still green.
+#       Nothing was broken; nothing would have noticed if it broke. Invariant 14
+#       is about exactly that gap, so these close it rather than record it.
+reset_tree
+printf '\nSee Phase 1.99 for details.\n' >> "$tree/README.md"
+expect_block "a citation to a nonexistent phase item blocks" "Phase 1\.99"
+
+reset_tree
+python3 - "$tree/BOOTSTRAP.md" <<'EOP'
+import sys
+p = sys.argv[1]; s = open(p).read()
+s = s.replace("\n3. `.gitignore`:", "\n2. `.gitignore`:", 1)
+open(p, "w").write(s)
+EOP
+expect_block "phase item labels that do not ascend block" "do not ascend"
+
+reset_tree
+sed -i '' 's/Tier gates 12 of the 22 entries/Tier gates 11 of the 22 entries/' "$tree/decisions/catalogue.md"
+expect_block "a wrong tier-gated count blocks" "claims 11 tier-gated"
+
+reset_tree
+sed -i '' 's/Tier gates 12 of the 22 entries/Tier gates 12 of the 21 entries/' "$tree/decisions/catalogue.md"
+expect_block "a wrong total entry count blocks" "claims 21 entries"
+
+reset_tree
+printf '\n```sh\ncp policies/nonexistent-in-a-fence.md .\n```\n' >> "$tree/README.md"
+expect_block "a dangling citation inside a code fence blocks" "nonexistent-in-a-fence"
+
 # ── False-positive guards. Both of these forms fired on this gate's first run,
 #       and a gate that fires on correct citations does not survive to catch
 #       anything.

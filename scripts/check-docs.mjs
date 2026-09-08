@@ -139,7 +139,9 @@ const LINKED = /\]\((?!https?:|#)([^)\s]+)\)/g;
 const FENCE = /^[ \t]*```[a-z]*\n([\s\S]*?)^[ \t]*```/gm;
 // The left boundary stops `~/.claude/x` matching as `.claude/x`.
 const FENCE_TOKEN = /(?<![A-Za-z0-9._~/-])([A-Za-z0-9][A-Za-z0-9._-]*(?:\/[A-Za-z0-9._-]+)+)/g;
-const FENCE_EXT = /\.(md|sh|mjs|js|cjs|toml|yml|yaml|json|ts|tsx)$/;
+// Case-insensitive, like the file walker. It was not, so `.MD` inside a fence
+// stayed invisible after discovery was fixed — half a fix reads as a whole one.
+const FENCE_EXT = /\.(md|sh|mjs|js|cjs|toml|yml|yaml|json|ts|tsx)$/i;
 
 /**
  * `n/a` and friends: prose that is a fraction, not a path. The original test —
@@ -152,7 +154,12 @@ const FENCE_EXT = /\.(md|sh|mjs|js|cjs|toml|yml|yaml|json|ts|tsx)$/;
  */
 function isProseFraction(raw) {
   if (/\.[A-Za-z0-9]+$/.test(raw)) return false;
-  return raw.split("/").filter(Boolean).some((seg) => seg.length < 2);
+  // EVERY segment, not ANY. `some` was still exempting `policies/x/pre-commit`
+  // and every `./`-prefixed path — a far wider hole than the `n/a` this exists
+  // for, and the second time this one test has been too broad. A real path has
+  // at least one segment worth naming; `n/a` and `a/b` do not.
+  const segs = raw.split("/").filter(Boolean);
+  return segs.length > 0 && segs.every((seg) => seg.length < 2);
 }
 
 let pathCitations = 0;
@@ -209,11 +216,22 @@ function resolveExact(base, raw) {
 function checkPath(file, raw) {
   pathCitations += 1;
   const want = raw.split("/").filter((s) => s !== "" && s !== ".").join("/");
+  // BOTH BASES BEFORE ANY VERDICT. The first version returned on the first base
+  // that resolved AT ALL, so a citation matching exactly relative to the citing
+  // file was reported as a case error whenever the root happened to hold a
+  // case-insensitive near-match. That rejects a correct citation — the failure
+  // this repo says gets a doc gate deleted in its first week — and the case fix
+  // introduced it. An exact match anywhere wins; a near-miss is only reported
+  // when no base matched exactly.
+  const nearMisses = [];
   for (const base of [ROOT, dirname(file)]) {
     const real = resolveExact(base, raw);
     if (real === null) continue;
     if (real === want) return;
-    note(`${rel(file)}: cites \`${raw}\`, which differs in case from \`${real}\``);
+    nearMisses.push(real);
+  }
+  if (nearMisses.length > 0) {
+    note(`${rel(file)}: cites \`${raw}\`, which differs in case from \`${nearMisses[0]}\``);
     return;
   }
   note(`${rel(file)}: cites \`${raw}\`, which does not exist`);
@@ -334,8 +352,10 @@ const catalogue = readFileSync(cataloguePath, "utf8");
 // the entry above it. It never appeared in `blocks`, so the `N of the M
 // entries` claim still matched, and it was never checked for the two fields
 // check 4 exists to enforce. The catalogue is designed to grow, and the letters
-// grow out of range at H.
-const blocks = catalogue.split(/^(?:### |## )(?=[A-Z]\d)/m).slice(1);
+// grow out of range at H — and BOTH expressions excluded lowercase, so the one
+// shape this check exists to catch walked past it in the form nobody predicts.
+// Found by an external review, round 7.
+const blocks = catalogue.split(/^(?:### |## )(?=[A-Za-z]\d)/m).slice(1);
 if (blocks.length === 0) die("❌ docs: no catalogue entries parsed — the entry heading shape changed.");
 
 // Widening the anchor fixes the ids we can predict. This catches the ones we
@@ -343,7 +363,7 @@ if (blocks.length === 0) die("❌ docs: no catalogue entries parsed — the entr
 // split still fails to treat as a boundary (`AA1`, a lowercase id) shows up as
 // a disagreement rather than as silence. A count derived from the same regex as
 // the thing it counts can only ever agree with itself.
-const headingIds = [...catalogue.matchAll(/^(?:### |## )([A-Z]+\d+)\b/gm)].map((m) => m[1]);
+const headingIds = [...catalogue.matchAll(/^(?:### |## )([A-Za-z]+\d+)\b/gm)].map((m) => m[1]);
 if (headingIds.length !== blocks.length) {
   note(
     `catalogue: ${headingIds.length} entry heading(s) but ${blocks.length} parsed block(s) — ` +

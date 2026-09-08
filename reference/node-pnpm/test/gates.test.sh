@@ -47,6 +47,7 @@ trap 'rm -rf "$work"' EXIT INT TERM
 
 pass=0
 fail=0
+skipped=0
 
 tmpl="$ref/../../templates"
 # Every external input this suite reads gets the same guard. One of the three
@@ -538,17 +539,28 @@ fi
 # And the marker token itself, taken from the example rather than spelled here:
 # a fully-filled config carrying one marker must still be rejected. Rename the
 # token in the example and this reads the new one, appends it, and fails.
-marker="$(sed -n 's/^regex = .*\(# [A-Z][A-Z-]*\)$/\1/p' "$example" | sort -u | head -1)"
-if [ -z "$marker" ]; then
+# EVERY distinct marker, not the first. `sort -u | head -1` tested one token and
+# reported green while a second, differently-spelled marker in the same file went
+# unchecked — the same "one value keeps the fixture green while another goes
+# dead" shape these per-value cases exist to close, reappearing one level up in
+# the code written to close it. Found by an external review, round 7.
+sed -n 's/^regex = .*\(# [A-Z][A-Z-]*\)$/\1/p' "$example" | sort -u > "$work/markers.txt"
+if [ ! -s "$work/markers.txt" ]; then
   fail=$((fail + 1)); printf '  FAIL  no marker comment found in the example\n'
 else
-  state marker_left
-  fill_except 0 \
-    | awk -v m="$marker" 'BEGIN { d = 0 }
-        /^regex = / { if (!d) { $0 = $0 " " m; d = 1 } }
-        { print }' > "$h/marker_left/.gitleaks.local.toml"
-  expect_msg "the example marker token is one the hook rejects" 1 "example placeholders" \
-    run_block "$h/marker_left"
+  mi=0
+  # Redirected, never piped: a `while` on the right of a pipe runs in a subshell,
+  # where every pass/fail increment below would be discarded silently.
+  while IFS= read -r mk; do
+    mi=$((mi + 1))
+    state "marker_$mi"
+    fill_except 0 \
+      | awk -v m="$mk" 'BEGIN { d = 0 }
+          /^regex = / { if (!d) { $0 = $0 " " m; d = 1 } }
+          { print }' > "$h/marker_$mi/.gitleaks.local.toml"
+    expect_msg "marker $mk is one the hook rejects" 1 "example placeholders" \
+      run_block "$h/marker_$mi"
+  done < "$work/markers.txt"
 fi
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -683,9 +695,111 @@ else
 fi
 
 # ═══════════════════════════════════════════════════════════════════════════
+# 4. The hook, EXECUTED
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# WHY THIS EXISTS, and why section 3 was not enough. Section 3 reads the hook's
+# text. A review defeated its first version five ways; the rewrite closed those,
+# and a second review immediately found three more — an `exit 0` placed BEFORE
+# the interval the reachability check guards, an `exit 0` placed after it, and
+# `[ -f ... ]` inverted to `[ ! -f ... ]` so the local layer is skipped exactly
+# when it is configured. All three left section 3 reporting every tick green,
+# and two of them let a staged secret reach a commit.
+#
+# The lesson is not "add three more patterns". A text assertion cannot be
+# complete about a shell script's control flow, so each round of patching buys
+# one round of quiet before the next shape appears. THESE ASSERT THE PROPERTY
+# INSTEAD: build a real git repo, stage a real secret, run the real hook, and
+# require it to refuse. All three mutations above fail this section
+# automatically, and so does the next shape nobody has thought of.
+#
+# TWO FIXTURES, ONE PER SCAN LAYER. A single fixture hid two of the three: with
+# no local config present, both skipped-local mutations still exited 1 via the
+# committed layer and looked caught. Each layer needs a secret only it matches.
+#
+# The `.gitleaks.local.toml` here holds invented tokens and lives in the temp
+# dir, never in a tree. `SKIP=lint,format` keeps pnpm and lint-staged out of it:
+# formatters are section 3's business, the scan is this section's.
+
+echo
+echo "hook execution (real repo, real gitleaks, real staged secret)"
+
+gl=""
+if [ -x "$ref/.bin/gitleaks" ]; then gl="$ref/.bin/gitleaks"
+elif command -v gitleaks >/dev/null 2>&1; then gl="gitleaks"; fi
+
+if [ -z "$gl" ]; then
+  # A dated probe result, not a fact about the world — and counted, so a machine
+  # without gitleaks can never read as coverage that ran.
+  skipped=$((skipped + 4))
+  printf '  SKIP  gitleaks not found (probe: command -v gitleaks, %s)\n' "$(date +%Y-%m-%d)"
+  printf '        Execution coverage did NOT run. `brew install gitleaks` arms it.\n'
+else
+  mkfixture() {                 # mkfixture <name> <committed|local>
+    d="$work/x-$1"
+    mkdir -p "$d"
+    ( cd "$d" || exit 1
+      git init -q .
+      git config user.email t@example.invalid
+      git config user.name t
+      printf '{"name":"fx","version":"1.0.0","engines":{"node":">=22.22"}}\n' > package.json
+      { printf 'title = "c"\n'
+        printf '# assurance:no-local-identity-rules\n'
+        printf '[[rules]]\nid = "committed-only"\ndescription = "d"\n'
+        printf "regex = '''COMMITTEDLEAK-[0-9A-Z]{8}'''\n"; } > .gitleaks.toml
+      cp "$hook" ./hook.sh
+      printf 'x\n' > .gitignore
+      git add package.json .gitleaks.toml hook.sh .gitignore
+      git commit -qm init
+      if [ "$2" = "local" ]; then
+        { printf 'title = "l"\n[extend]\npath = ".gitleaks.toml"\n'
+          printf '[[rules]]\nid = "local-only"\ndescription = "d"\n'
+          printf "regex = '''LOCALLEAK-[0-9A-Z]{8}'''\n"; } > .gitleaks.local.toml
+      fi )
+    printf '%s' "$d"
+  }
+
+  expect_exec() {               # expect_exec <name> <0|1 wanted> <dir> [env...]
+    name="$1"; want="$2"; dir="$3"; shift 3
+    # TESTED, not bare. `set -e` fires on an untested command that fails — so
+    # the first case where the hook CORRECTLY refuses would kill the suite with
+    # no summary line. That is the trap this file records in its own header, and
+    # it has now been hit three times in three different suites.
+    if ( cd "$dir" && env "$@" SKIP=lint,format sh ./hook.sh >/dev/null 2>&1 ); then
+      got=0
+    else
+      got=$?
+    fi
+    if { [ "$want" -eq 0 ] && [ "$got" -eq 0 ]; } || { [ "$want" -ne 0 ] && [ "$got" -ne 0 ]; }; then
+      pass=$((pass + 1)); printf '  ok    %s\n' "$name"
+    else
+      fail=$((fail + 1)); printf '  FAIL  %s (exit %s)\n' "$name" "$got"
+    fi
+  }
+
+  c="$(mkfixture committed committed)"
+  ( cd "$c" && printf 'nothing here\n' > ok.txt && git add ok.txt )
+  expect_exec "a clean commit is not blocked" 0 "$c"
+
+  ( cd "$c" && git reset -q && printf 'k = COMMITTEDLEAK-ABCD1234\n' > leak.txt && git add leak.txt )
+  expect_exec "a staged secret is refused by the committed layer" 1 "$c"
+
+  # Executed, not grepped: section 3 only checks the rejecting branch is spelled.
+  expect_exec "SKIP=gitleaks does not get the commit through" 1 "$c" SKIP=gitleaks
+
+  l="$(mkfixture local local)"
+  ( cd "$l" && printf 'id = LOCALLEAK-ABCD1234\n' > leak.txt && git add leak.txt )
+  expect_exec "a secret only the local layer matches is refused" 1 "$l"
+fi
+
+# ═══════════════════════════════════════════════════════════════════════════
 echo
 if [ "$fail" -gt 0 ]; then
   printf '❌ gates: %s passed, %s FAILED\n' "$pass" "$fail"
   exit 1
 fi
-printf '✅ gates: %s passed\n' "$pass"
+if [ "$skipped" -gt 0 ]; then
+  printf '✅ gates: %s passed, %s SKIPPED — execution coverage did not run\n' "$pass" "$skipped"
+else
+  printf '✅ gates: %s passed\n' "$pass"
+fi
