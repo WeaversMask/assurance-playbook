@@ -45,6 +45,12 @@ fail=0
 
 tree="$work/tree"
 reset_tree() { rm -rf "$tree"; cp -R "$work/pristine" "$tree"; }
+# `sed -i` is not portable. BSD sed needs an explicit empty suffix, `-i ''`; GNU
+# sed takes that empty argument as the script and the real script as a filename,
+# so under `set -e` this suite stopped at its first case on any GNU-userland
+# machine — and with it the one command that runs every check here. Argued from
+# the syntax, not observed: nothing here has run on Linux (TRACKER.md, D-002).
+sub_in_place() { sed "$1" "$2" > "$2.tmp" && mv "$2.tmp" "$2"; }
 run_gate() { node "$tree/scripts/check-docs.mjs" 2>&1 || true; }
 # The node call MUST be tested, not bare. `set -e` fires on an untested command
 # that fails — so the first case where the gate correctly BLOCKS would kill the
@@ -99,7 +105,7 @@ expect_clean "the repository as committed passes"
 #       not. A miscased citation resolved locally and was a dead link everywhere
 #       that matters.
 reset_tree
-sed -i '' 's|`policies/process\.md`|`Policies/Process.md`|' "$tree/README.md"
+sub_in_place 's|`policies/process\.md`|`Policies/Process.md`|' "$tree/README.md"
 expect_block "a citation whose case differs is reported" "differs in case"
 
 # ── 2. The same bug from the other side: `endsWith(\".md\")` is case-SENSITIVE,
@@ -235,11 +241,11 @@ EOP
 expect_block "phase item labels that do not ascend block" "do not ascend"
 
 reset_tree
-sed -i '' 's/Tier gates 12 of the 22 entries/Tier gates 11 of the 22 entries/' "$tree/decisions/catalogue.md"
+sub_in_place 's/Tier gates 12 of the 22 entries/Tier gates 11 of the 22 entries/' "$tree/decisions/catalogue.md"
 expect_block "a wrong tier-gated count blocks" "claims 11 tier-gated"
 
 reset_tree
-sed -i '' 's/Tier gates 12 of the 22 entries/Tier gates 12 of the 21 entries/' "$tree/decisions/catalogue.md"
+sub_in_place 's/Tier gates 12 of the 22 entries/Tier gates 12 of the 21 entries/' "$tree/decisions/catalogue.md"
 expect_block "a wrong total entry count blocks" "claims 21 entries"
 
 reset_tree
