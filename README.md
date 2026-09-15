@@ -1,9 +1,13 @@
 # Assurance Playbook
 
-Portable quality, safety, license, and identity assurance for any project —
-extracted from the Argus codebase (Node/pnpm monorepo) into a stack-agnostic
-form that a maintainer or an agent can instantiate in a new repository of any
-language or ecosystem.
+Portable quality, safety, license, and identity assurance — extracted from the
+Argus codebase (Node/pnpm monorepo) into a form a maintainer or an agent can
+instantiate in a new repository. The **policies** are stack-agnostic; the
+**mechanisms** are derived per project. The evidence so far is narrow, and worth
+knowing: the mechanisms come from one Node/pnpm project, the procedure has been
+executed on one other stack — a Python package, as far as Phase 2's human stop —
+and one mandatory gate has a worked implementation only in Node. See
+*Prerequisites*.
 
 > **Public, and read-only.** This repository distributes the playbook; it does
 > not take pull requests yet. What the playbook protects — personal identifiers,
@@ -59,23 +63,62 @@ all.
 | `decisions/catalogue.md`    | The 22 questions a project answers at Phase 0 — default, alternatives, how to tell which applies, what each branch costs, and where the answer is recorded |
 | `decisions/mechanism-rubric.md` | Seven criteria for scoring a mechanism the playbook has never heard of, with a pass rule and a worked example. Replaces the tool table that used to rot here |
 | `reference/node-pnpm/`      | Real hooks, CI, and scripts — a worked example, not a copy source                                                                               |
-| `templates/`                | Runner-agnostic starting files: `AGENTS.md`, project plan, tracker with its decision table, ADR/PR/handover/task templates, the bootstrap summary, the go-public checklist, and the local scanner-patterns example |
+| `templates/`                | Runner-agnostic starting files: `AGENTS.md`, project plan, tracker with its decision table, ADR/PR/handover/task/package-README templates, the bootstrap summary, the go-public checklist, and the local scanner-patterns example |
 | `runners/`                  | Runner-specific furniture, installed only for the harness a project names. `runners/claude/` holds the skill (canonical copy; installed at `~/.claude/skills/bootstrap-assurance/`), the harness entry-file template, and the sync check |
 | `scripts/`                  | This repo's own maintenance checks — currently the documentation-consistency gate. Not part of what a project installs                            |
 | `TRACKER.md`                | This repo's own Phase 0 answers and open decisions. Not part of what a project installs                                                          |
 
 ## Using it
 
-**Quick start:** optionally write the up-front design first from
-`templates/PROJECT-PLAN.template.md` — it pre-answers several catalogue entries
-(§13a maps which) and shreds into the repo's docs. Then create the new project
-repo (fresh `git init` — never a fork of a private repo) and run the procedure
-inside it: **any agent can follow `BOOTSTRAP.md` directly**, and Claude Code has
-`/bootstrap-assurance`, which walks it end to end and stops at the steps only you
-can do (the local patterns file, remote creation).
+**Nothing to install.** Clone this repository anywhere. Then work in the project
+you are setting up — never in this repository:
 
-**Manual:** follow [BOOTSTRAP.md](BOOTSTRAP.md) yourself; it is written to be
-executable by either a human or an agent.
+- **With any agent:** tell it where the clone is, and to read the clone's
+  `AGENTS.md` and follow its `BOOTSTRAP.md` in your project. The procedure assumes
+  no particular harness, and stops at the steps only you can do: creating the
+  remote, and — for a pseudonymous project — writing the local
+  personal-identifier patterns file.
+- **By hand:** follow [BOOTSTRAP.md](BOOTSTRAP.md) yourself. It is written to be
+  executable by a human or an agent.
+- **With Claude Code, optionally:** the `/bootstrap-assurance` skill walks the
+  same procedure end to end. It is a convenience, not a requirement. From the
+  clone:
+
+  ```sh
+  mkdir -p ~/.claude/skills/bootstrap-assurance
+  cp runners/claude/skill/bootstrap-assurance/SKILL.md ~/.claude/skills/bootstrap-assurance/
+  ```
+
+  Tell the session where the clone is; the skill asks if it has not been told.
+
+Start the project from a fresh `git init`, never a fork of a private repo. You can
+write the up-front design first, from `templates/PROJECT-PLAN.template.md`: it
+pre-answers several catalogue entries (§13a maps which) and shreds into the new
+repo's docs.
+
+## Prerequisites
+
+**To use the playbook:** git, plus whatever your own stack needs. `BOOTSTRAP.md`
+derives each gate's mechanism for your stack, so the tools are chosen per project.
+
+**One cost to know before you start.** The decision-trigger check (Phase 2.10) is
+mandatory at every tier, and its only worked implementation is a Node script,
+`reference/node-pnpm/scripts/check-decisions.mjs`. On any other stack, run it under
+Node or write the equivalent — the shape that ports is described in its header. A
+portable implementation is an open decision in [TRACKER.md](TRACKER.md) (D-001).
+
+**To run this repository's own checks** — `sh .githooks/pre-commit`, armed once
+per clone with `git config core.hooksPath .githooks`:
+
+| Tool | Licence | Needed for |
+| --- | --- | --- |
+| POSIX `sh`, `sed`, `awk`, `diff`, `tar` | — | every suite |
+| git | GPL-2.0-only | the suites build throwaway repositories |
+| Node.js 22 | MIT | the docs gate, and the decision check under test |
+| Python 3 | Python-2.0 | one docs-suite case |
+| gitleaks | MIT | optional — without it the hook-execution cases are skipped, and say so |
+
+They have only run on macOS so far (D-002).
 
 ## Maintaining the playbook
 
@@ -84,12 +127,11 @@ executable by either a human or an agent.
 - Policies lead, the reference lags: where a policy mandates something the
   Argus reference doesn't implement yet, the reference README says so
   explicitly.
-- **The skill has two copies and nothing enforces their agreement** — the
-  canonical one here and the installed one at
-  `~/.claude/skills/bootstrap-assurance/`, which is the copy that actually
-  runs. It has drifted before (the invariant-5a guidance sat here unrunnable
-  for a full release), so edit the canonical file, then copy it across and
-  confirm:
+- **The skill has two copies** — the canonical one here and the installed one
+  at `~/.claude/skills/bootstrap-assurance/`, which is the copy that actually
+  runs. They drifted once for a full release (the invariant-5a guidance sat here
+  unrunnable), and `.githooks/pre-commit` now fails when they disagree. Edit the
+  canonical file, then copy it across and confirm:
 
   ```sh
   cp runners/claude/skill/bootstrap-assurance/SKILL.md ~/.claude/skills/bootstrap-assurance/SKILL.md
@@ -97,3 +139,7 @@ executable by either a human or an agent.
   ```
 - Never commit personal identifiers here — same rule as everywhere else.
   The local patterns file is per-machine and gitignored, even in this repo.
+
+## Licence
+
+MIT — see [LICENSE](LICENSE).

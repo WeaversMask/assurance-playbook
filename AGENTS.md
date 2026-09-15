@@ -1,5 +1,9 @@
 # AGENTS.md — the assurance playbook
 
+> **Setting up a project with this playbook?** Follow [BOOTSTRAP.md](BOOTSTRAP.md)
+> inside *that* project's repository. This file is for changing the playbook
+> itself.
+
 Onboarding for any agent working **on this repository**. Harness-specific files
 (`CLAUDE.md`) are pointers plus a delta; where they disagree with this file on
 shared content, **this file wins**.

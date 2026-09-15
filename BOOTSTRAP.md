@@ -294,6 +294,12 @@ fresh install is the worst possible time to debug a misattributed error.
     implementation; the tracker needs its `Trigger` column
     (`templates/IMPLEMENTATION.skeleton.md`).
 
+    **That worked implementation is the only one, and it is Node.** Like the
+    identity gates in item 4, this check is written rather than chosen — no
+    stack ships it — so on any other stack, run the exhibit under Node or write
+    the equivalent from the shape its header describes. Budget for that before
+    Phase 2 starts, not on reaching this item.
+
 11. **Budget gates** (tier 3 only, and only where agent or model budget is
     actually being spent): each control that exists for *cost* rather than
     safety — review breadth, model class, agent count — gets a **named opt-out
@@ -494,8 +500,11 @@ it are terminal. Present them as a checklist.
 
 ### HUMAN STOP — 1. Create the remote
 
-The maintainer creates the remote repo (**private**) and pushes. Agents
-never create repos, never change visibility, and never push to
+The maintainer creates the remote repo, with the visibility recorded for
+catalogue entry A3, and pushes. If A3 says public from the first commit, work
+through `templates/go-public-checklist.md` before this push — there is no private
+period in which to do it later. Agents never create repos, never change
+visibility, and never push to
 retired/frozen archives ([identity-protection.md](policies/identity-protection.md)
 invariants 6 and 7).
 
