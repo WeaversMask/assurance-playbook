@@ -5,8 +5,10 @@ description: Instantiate the maintainer's assurance playbook — quality gates, 
 
 # Bootstrap the assurance playbook
 
-The playbook lives at `~/assurance-playbook` (private repo; if missing, ask
-the maintainer where it is). It splits every workflow into stack-agnostic
+The playbook is the checkout of this repository that the maintainer points you
+at. If you have not been told where it is, ask — never search the disk for it or
+guess one. **Every playbook path below is relative to that checkout, not to the
+project being bootstrapped.** It splits every workflow into stack-agnostic
 **policy** (`policies/*.md` — normative) and per-stack **mechanism**
 (derived at bootstrap; `reference/node-pnpm/` is a worked example, never a
 copy source).
@@ -15,7 +17,7 @@ copy source).
 
 0. **Plan first, if there is no plan.** If the target directory is empty
    or has no `PROJECT-PLAN.md`, offer to draft one together from
-   `~/assurance-playbook/templates/PROJECT-PLAN.template.md` before any
+   the playbook's `templates/PROJECT-PLAN.template.md` before any
    bootstrapping: interview the maintainer section by section, honor the
    template's writing rules and per-section contracts (license-check §4
    choices against `policies/license-conformity.md` while drafting, keep
@@ -24,7 +26,7 @@ copy source).
    Proceed to bootstrap only when the maintainer marks it **Agreed** or
    explicitly chooses to skip the plan. Shredding (§14) happens after
    bootstrap, as its own docs PR.
-1. Read `~/assurance-playbook/README.md`, then `BOOTSTRAP.md` — including
+1. Read the playbook's `README.md`, then its `BOOTSTRAP.md` — including
    its **"The ordering rule"** preamble — then the six files in
    `policies/`. BOOTSTRAP.md is the installation order; follow it phase by
    phase in the **target project's repo**.
