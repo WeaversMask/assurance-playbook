@@ -13,7 +13,8 @@
 # the copy that runs lacked it. This is that check.
 #
 # RECORDED DEVIATION. Invariant 11 requires a **CI** freshness check. This repo
-# has no remote and no CI, so this runs as a pre-commit hook via
+# has no CI, and a CI runner would have nothing to compare: the copy that drifts
+# is installed on the maintainer's machine. So this runs as a pre-commit hook via
 # `core.hooksPath=.githooks`. Mechanical rather than remembered, but a hook is
 # not CI, and that gap is recorded rather than papered over.
 #

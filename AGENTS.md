@@ -5,9 +5,19 @@ Onboarding for any agent working **on this repository**. Harness-specific files
 shared content, **this file wins**.
 
 This repo is not a normal project. It **describes** how projects are set up; it
-is not itself set up that way, and deliberately so — it has no remote, no CI and
-one maintainer, so full self-application would be ceremony. See *Self-application*
-below for the one exception.
+is not itself set up that way. Most of what the playbook installs judges a
+project's code — dependencies, tests, coverage, releases, incoming pull requests —
+and this repo has none of those to judge, so those gates would check nothing here.
+*Self-application* below lists the three things that do run. What is still
+missing — the safety class and CI — is an open row in [TRACKER.md](TRACKER.md),
+not an unstated gap.
+
+## This repository's identity
+
+**Commits only as `WeaversMask <131781531+WeaversMask@users.noreply.github.com>`**,
+from repo-local git config — never inherited from global config. **Pseudonymous:
+yes.** Nothing verifies either yet (`TRACKER.md`, D-004): until something does,
+this is a declaration, not a gate.
 
 ## What is here
 

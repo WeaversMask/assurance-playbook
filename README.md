@@ -5,10 +5,12 @@ extracted from the Argus codebase (Node/pnpm monorepo) into a stack-agnostic
 form that a maintainer or an agent can instantiate in a new repository of any
 language or ecosystem.
 
-> **This repository stays private, permanently.** It is operational tooling.
-> The identity-protection policy and the go-public checklist reference the
-> very things they protect; nothing here needs to be public, so nothing here
-> ever is. See [policies/identity-protection.md](policies/identity-protection.md).
+> **Public, and read-only.** This repository distributes the playbook; it does
+> not take pull requests yet. What the playbook protects — personal identifiers,
+> and the per-machine patterns that find them — is kept *outside* it by design
+> ([identity-protection.md](policies/identity-protection.md) invariant 5), which
+> is what makes it publishable. Its own answers to the questions it asks every
+> project are in [TRACKER.md](TRACKER.md).
 
 ## The design
 
@@ -60,6 +62,7 @@ all.
 | `templates/`                | Runner-agnostic starting files: `AGENTS.md`, project plan, tracker with its decision table, ADR/PR/handover/task templates, the bootstrap summary, the go-public checklist, and the local scanner-patterns example |
 | `runners/`                  | Runner-specific furniture, installed only for the harness a project names. `runners/claude/` holds the skill (canonical copy; installed at `~/.claude/skills/bootstrap-assurance/`), the harness entry-file template, and the sync check |
 | `scripts/`                  | This repo's own maintenance checks — currently the documentation-consistency gate. Not part of what a project installs                            |
+| `TRACKER.md`                | This repo's own Phase 0 answers and open decisions. Not part of what a project installs                                                          |
 
 ## Using it
 

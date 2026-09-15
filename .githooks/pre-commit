@@ -1,10 +1,12 @@
 #!/usr/bin/env sh
 # Pre-commit hook for the assurance playbook itself.
 #
-# SCOPE, deliberately narrow. This repo does NOT self-apply the playbook — it has
-# no remote, no CI and one maintainer, and full self-application would be
-# ceremony. Three things earn their place, and each was earned rather than
-# assumed:
+# SCOPE, deliberately narrow. This repo does NOT self-apply the playbook. Most of
+# what the playbook installs judges a project's code — dependencies, tests,
+# coverage, releases, incoming pull requests — and this repo has none of those to
+# judge. Three things earn their place, and each was earned rather than assumed.
+# What is still missing (the safety class, CI) is an open row in TRACKER.md, not
+# something this list implies is unnecessary:
 #
 # (This sentence said "Two things ... and both" while three were listed below
 # it, for as long as the third has existed — in the hook whose own item 2 exists
