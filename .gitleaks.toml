@@ -1,0 +1,20 @@
+title = "assurance playbook — committed scanner config"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "absolute-home-path"
+description = "Absolute home-directory path — discloses the machine account name"
+regex = '''(/Users/|/home/|C:\\Users\\)[A-Za-z0-9._-]{2,}[/\\]'''
+tags = ["identity", "pii"]
+
+[[rules.allowlists]]
+description = "Provider CI runner homes are public knowledge"
+regexTarget = "match"
+regexes = ['''(/home/runner[/\\]|/Users/runner[/\\])''']
+
+[[rules.allowlists]]
+description = "Suite fixtures asserting this shape is caught. Scoped to the invented account name, not to the file, so a real path in the same file still fires"
+regexTarget = "match"
+regexes = ['''(/Users/someoneelse[/\\]|/home/someoneelse[/\\])''']

@@ -13,7 +13,7 @@
 # SCOPE, deliberately narrow. This repo does NOT self-apply the playbook. Most of
 # what the playbook installs judges a project's code — dependencies, tests,
 # coverage, releases, incoming pull requests — and this repo has none of those to
-# judge. Three things earn their place here, and each was earned rather than
+# judge. Four things earn their place here, and each was earned rather than
 # assumed:
 #
 #   1. The skill-copy freshness check. The two copies drifted for a full
@@ -37,6 +37,11 @@
 #      ways on its first adversarial pass, four of them silently, printing its
 #      success line with its counts unchanged while the defect walked through.
 #
+#   4. The safety-gate suite. The gate it covers can be narrowed in two
+#      directions — refusing less than it should, or refusing everything — and
+#      its first draft did the second: a declaration it could detect but not
+#      parse blocked every commit. See TRACKER.md, D-004.
+#
 # Adding anything else is a decision to make on purpose, not by accretion.
 
 set -e
@@ -47,4 +52,5 @@ sh "$repo_root/runners/claude/check-skill-sync.sh"
 sh "$repo_root/runners/claude/check-skill-sync.test.sh"
 sh "$repo_root/reference/node-pnpm/test/gates.test.sh"
 sh "$repo_root/scripts/check-docs.test.sh"
+sh "$repo_root/scripts/check-safety.test.sh"
 node "$repo_root/scripts/check-docs.mjs"

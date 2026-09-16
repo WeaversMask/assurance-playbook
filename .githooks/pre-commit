@@ -3,7 +3,10 @@
 #
 # It runs two things, and the order is correctness rather than preference:
 #
-#   1. The safety class — arriving next; see TRACKER.md D-004.
+#   1. The safety class, in `.githooks/safety-checks.sh` — the declared identity
+#      and a scan of the staged changes. It runs FIRST because it is the cheap
+#      one and the one whose failure matters most: a leak should be refused
+#      before three test suites spend a minute agreeing the repo is tidy.
 #   2. The verification checks, in `scripts/run-checks.sh`, which anyone can run
 #      without committing. That script carries the argument for why there are
 #      three of them and not more.
@@ -26,4 +29,5 @@ set -e
 
 repo_root="$(git rev-parse --show-toplevel)"
 
+sh "$repo_root/.githooks/safety-checks.sh"
 sh "$repo_root/scripts/run-checks.sh"

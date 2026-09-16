@@ -107,8 +107,8 @@ mandatory at every tier, and its only worked implementation is a Node script,
 Node or write the equivalent — the shape that ports is described in its header. A
 portable implementation is an open decision in [TRACKER.md](TRACKER.md) (D-001).
 
-**To run this repository's own checks** — `sh .githooks/pre-commit`, armed once
-per clone with `git config core.hooksPath .githooks`:
+**To run this repository's own checks** — `sh scripts/run-checks.sh`, which
+needs no git configuration and commits nothing:
 
 | Tool | Licence | Needed for |
 | --- | --- | --- |
@@ -116,7 +116,7 @@ per clone with `git config core.hooksPath .githooks`:
 | git | GPL-2.0-only | the suites build throwaway repositories |
 | Node.js 22 | MIT | the docs gate, and the decision check under test |
 | Python 3 | Python-2.0 | one docs-suite case |
-| gitleaks | MIT | optional — without it the hook-execution cases are skipped, and say so |
+| gitleaks | MIT | optional for the checks above, required to commit here — the pre-commit hook scans staged changes |
 
 They have only run on macOS so far (D-002).
 

@@ -12,9 +12,9 @@ This repo is not a normal project. It **describes** how projects are set up; it
 is not itself set up that way. Most of what the playbook installs judges a
 project's code — dependencies, tests, coverage, releases, incoming pull requests —
 and this repo has none of those to judge, so those gates would check nothing here.
-*Self-application* below lists the three things that do run. What is still
-missing — the safety class and CI — is an open row in [TRACKER.md](TRACKER.md),
-not an unstated gap.
+*Self-application* below lists the four things that do run. What is still
+missing — CI, and the local half of the personal-identifier layer — is an open
+row in [TRACKER.md](TRACKER.md), not an unstated gap.
 
 ## This repository's identity
 
@@ -63,10 +63,13 @@ this is a declaration, not a gate.
 - **Agents never merge.** Branches and commits, yes; landing them is the
   maintainer's.
 
-## Self-application: exactly three things
+## Self-application: exactly four things
 
-This repo does not run the playbook on itself. Three exceptions earned their
-place, each after something broke that nothing was watching:
+This repo does not run the playbook on itself. Four exceptions earned their
+place. The first three followed something breaking that nothing was watching;
+the fourth is the safety class, which the playbook installs in every project at
+every tier and never scales — and which this repo went without until it was
+about to become public:
 
 1. **The skill-copy freshness check.** The two copies drifted for a full release,
    leaving guidance here that the copy which actually runs did not have.
@@ -89,11 +92,19 @@ place, each after something broke that nothing was watching:
    their own fixes four times, once by a change that would have blocked the
    first commit of every bootstrapped repo.
 
-All are armed by `core.hooksPath=.githooks`, which runs them on every commit
-here.
+4. **The safety class** — `.githooks/safety-checks.sh`: the commit's author and
+   committer must match the identity declared above, and the staged changes are
+   scanned against the committed `.gitleaks.toml`. Not skippable, by anything.
+   `scripts/check-safety.test.sh` covers it. The per-machine half of the
+   personal-identifier layer is not armed yet (TRACKER.md, D-004).
 
-**If you change either gate, add the case that would have caught the change you
-are making, before you make it.** Every case in those suites is one a review
+All four suites run without committing, as `sh scripts/run-checks.sh`. The
+safety gate itself runs only on a commit, because what it examines — the
+identity of the commit being made, and its staged changes — does not exist
+until then. All of it is armed by `core.hooksPath=.githooks`.
+
+**If you change any of these gates, add the case that would have caught the
+change you are making, before you make it.** Every case in those suites is one a review
 found, not one their author thought of — which is the only reason they catch
 anything. The author's own fixtures had been green through all four breakages.
 
