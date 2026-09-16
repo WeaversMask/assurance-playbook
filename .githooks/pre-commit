@@ -1,43 +1,12 @@
 #!/usr/bin/env sh
 # Pre-commit hook for the assurance playbook itself.
 #
-# SCOPE, deliberately narrow. This repo does NOT self-apply the playbook. Most of
-# what the playbook installs judges a project's code — dependencies, tests,
-# coverage, releases, incoming pull requests — and this repo has none of those to
-# judge. Three things earn their place, and each was earned rather than assumed.
-# What is still missing (the safety class, CI) is an open row in TRACKER.md, not
-# something this list implies is unnecessary:
+# It runs two things, and the order is correctness rather than preference:
 #
-# (This sentence said "Two things ... and both" while three were listed below
-# it, for as long as the third has existed — in the hook whose own item 2 exists
-# because stated counts go stale. Fixed on sight; it is the sixth count error
-# recorded on this branch.)
-#
-#   1. The skill-copy freshness check. The two copies drifted for a full
-#      release, leaving guidance here that the copy which actually runs lacked.
-#
-#   2. The documentation-consistency check. Eight of the nine regressions on
-#      this branch were in markdown — a moved directory, a renumbered phase, a
-#      stale count — and none had any mechanical protection; every one was found
-#      by running the same greps again by hand. It checks claims about the
-#      present that resolve to a name, and nothing about wording.
-#
-#   3. The gate regression suites. `quality-gates.md` invariant 14 says a gate
-#      that can be silently narrowed owes a regression test, and the two gates
-#      this repo ships as executable code were broken by their own fixes four
-#      times — once by a change that would have blocked the first commit of
-#      every bootstrapped repo. Every case in those suites is one a review
-#      found, not one their author thought of. Running them here is the only
-#      thing standing between a plausible edit and a fifth round of that.
-#
-#      `check-docs.test.sh` joined them after the doc gate — the newest of the
-#      three, and the only one that had shipped with no suite at all — lost six
-#      ways on its first adversarial pass, four of them silently, printing its
-#      success line with its counts unchanged while the defect walked through.
-#      Invariant 14 is not satisfied by a gate being careful; it is satisfied by
-#      a suite that fails when the gate stops working.
-#
-# Adding anything else is a decision to make on purpose, not by accretion.
+#   1. The safety class — arriving next; see TRACKER.md D-004.
+#   2. The verification checks, in `scripts/run-checks.sh`, which anyone can run
+#      without committing. That script carries the argument for why there are
+#      three of them and not more.
 #
 # ACTIVATION: `git config core.hooksPath .githooks`. Committing this file does not
 # arm it — a hook in the tree that nobody configured is exactly the kind of
@@ -49,16 +18,12 @@
 # installed there later stops running silently, so a second hook belongs in this
 # directory rather than that one.
 #
-# It runs on every commit rather than only on commits touching the skill, because
-# the drift this catches is usually introduced by editing the INSTALLED copy —
-# which leaves no trace in this repo's staged changes at all.
+# The checks run on every commit rather than only on commits touching the skill,
+# because the drift the first one catches is usually introduced by editing the
+# INSTALLED copy — which leaves no trace in this repo's staged changes at all.
 
 set -e
 
 repo_root="$(git rev-parse --show-toplevel)"
 
-sh "$repo_root/runners/claude/check-skill-sync.sh"
-sh "$repo_root/runners/claude/check-skill-sync.test.sh"
-sh "$repo_root/reference/node-pnpm/test/gates.test.sh"
-sh "$repo_root/scripts/check-docs.test.sh"
-node "$repo_root/scripts/check-docs.mjs"
+sh "$repo_root/scripts/run-checks.sh"
