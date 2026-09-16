@@ -120,6 +120,20 @@ per clone with `git config core.hooksPath .githooks`:
 
 They have only run on macOS so far (D-002).
 
+## Built with an earlier version
+
+Two projects were set up using earlier versions of this playbook, before it was
+extracted into the form here:
+
+- **[argus-oss](https://github.com/WeaversMask/argus-oss)** — the Node/pnpm
+  monorepo `reference/node-pnpm/` was taken from.
+- **Gradient** — a Node/pnpm project. Private, so there is nothing to link.
+
+Neither is a clean run of the procedure as it stands today: both predate it, and
+what they show is this gate set surviving daily use, not a bootstrap. The
+execution evidence for the current `BOOTSTRAP.md` is the narrower claim at the
+top of this file.
+
 ## Maintaining the playbook
 
 - When a policy improves in a live project (a new gotcha, a hardened gate),

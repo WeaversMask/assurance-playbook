@@ -15,7 +15,7 @@
 | --- | --- | --- |
 | T0 — tier | Not yet self-assessed. The escalator sets a floor of 2, because the repo will be public. | open — D-000 |
 | A1 — pseudonymous | Yes. Every commit since the first is under the pseudonym. | default — announced, not asked |
-| A2 — persona | Shared: **WeaversMask**, the persona Argus also commits as. Declared in `AGENTS.md`. Consequence accepted: publishing this repo publishes its gate set, and a distinctive gate set is a signature ([identity-protection.md](policies/identity-protection.md) invariant 8), so a later project that must stay unlinkable from this persona cannot adopt these gates unmodified. | asked, 2026-09-11 |
+| A2 — persona | Shared: **WeaversMask**, the persona Argus and Gradient also commit as. Declared in `AGENTS.md`. Consequence accepted: publishing this repo publishes its gate set, and a distinctive gate set is a signature ([identity-protection.md](policies/identity-protection.md) invariant 8), so a later project that must stay unlinkable from this persona cannot adopt these gates unmodified. | asked, 2026-09-11 |
 | A3 — visibility | Public, read-only, no pull requests yet — a divergence from the default. What the repo protects is kept outside it by design (invariant 5), so it is publishable as built. A project records a divergence as an ADR; this repo has no ADR directory, so the reason is this row. | asked, 2026-09-11 |
 | B1 — licence | MIT, one licence for everything. `LICENSE`. | asked, 2026-09-11 |
 
