@@ -34,6 +34,13 @@
 #     shape. Every subshell that touches a fixture clears those variables first,
 #     and the last case below locks it.
 #
+# WITHOUT GITLEAKS, THE SCAN CASES SKIP — and say so, and are counted, as
+# gates.test.sh does. The first version failed four cases on any machine without
+# the scanner, which turned `sh scripts/run-checks.sh` red for a reader who only
+# wanted to try it, contradicting the README that calls gitleaks optional there.
+# The identity cases still run without it: the gate refuses those before it
+# looks for a scanner. A skipped case never reads as coverage that ran.
+#
 # Run: sh scripts/check-safety.test.sh
 
 set -e
@@ -61,6 +68,16 @@ clear_git_env() {
 
 # Runs a command inside a fixture, with the caller's git environment cleared.
 in_fixture() { d="$1"; shift; ( clear_git_env; cd "$d" || exit 1; "$@" ); }
+
+# The scanner the gate will find inside a fixture. Fixtures have no .bin/, so
+# PATH is the only place it can come from.
+skipped=0
+needs_scanner() {
+  if command -v gitleaks >/dev/null 2>&1; then return 0; fi
+  skipped=$((skipped + 1))
+  printf '  SKIP  %s — gitleaks not found (probe: command -v gitleaks, %s)\n' "$1" "$(date +%Y-%m-%d)"
+  return 1
+}
 
 # A fixture repo whose declared identity is fake and whose hook is the real
 # script under test. The seed commit bypasses the hook deliberately — that is
@@ -117,8 +134,10 @@ echo "safety-checks.sh"
 
 d="$(mkfixture ok)"
 
+if needs_scanner "a clean commit passes, with a space in the declared name"; then
 stage "$d" one
 check "a clean commit passes, with a space in the declared name" 0 "$d" ""
+fi
 
 stage "$d" two
 if out="$( in_fixture "$d" git -c user.email=w@example.invalid commit -qm t 2>&1 )"; then got=0; else got=$?; fi
@@ -141,11 +160,15 @@ if out="$( in_fixture "$d" git commit --author='Someone Else <e@example.invalid>
 verdict "--author= is refused" 1 "$got" "author does not match" "$out"
 
 # ── The scan layer ──────────────────────────────────────────────────────────
+if needs_scanner "a staged absolute home path is refused"; then
 in_fixture "$d" sh -c 'git reset -q --hard && printf "run: cd /Users/%s/project\n" "probeuser" > note.md && git add note.md'
-check "a staged absolute home path is refused" 1 "$d" ""
+check "a staged absolute home path is refused" 1 "$d" "leaks found"
+fi
 
+if needs_scanner "an ordinary staged file is not refused"; then
 in_fixture "$d" sh -c 'git reset -q --hard && printf "nothing suspicious\n" > note.md && git add note.md'
 check "an ordinary staged file is not refused" 0 "$d" ""
+fi
 
 # ── Fail-closed: comparing nothing must never read as clean ─────────────────
 t="$(mkfixture twodecl)"
@@ -160,8 +183,10 @@ check "an unparseable declaration blocks" 1 "$m" "cannot be read"
 
 n="$(mkfixture noconfig)"
 in_fixture "$n" sh -c 'rm .gitleaks.toml && git add -A && git -c core.hooksPath=/dev/null commit -qm x'
+if needs_scanner "a missing committed scanner config blocks"; then
 stage "$n" x
 check "a missing committed scanner config blocks" 1 "$n" "gitleaks.toml is missing"
+fi
 
 # PATH without gitleaks. The fixture has no .bin/gitleaks either, so both
 # resolution branches fail and the scan cannot run.
@@ -176,10 +201,16 @@ verdict "a missing scanner blocks rather than skipping" 1 "$got" "gitleaks not f
 GIT_AUTHOR_EMAIL=outer@example.invalid
 GIT_COMMITTER_EMAIL=outer@example.invalid
 export GIT_AUTHOR_EMAIL GIT_COMMITTER_EMAIL
+if needs_scanner "a stray identity in the environment does not reach a fixture"; then
 stage "$d" hermetic
 check "a stray identity in the environment does not reach a fixture" 0 "$d" ""
+fi
 unset GIT_AUTHOR_EMAIL GIT_COMMITTER_EMAIL
 
 echo
 if [ "$fail" -gt 0 ]; then printf '❌ safety: %s passed, %s FAILED\n' "$pass" "$fail"; exit 1; fi
-printf '✅ safety: %s passed\n' "$pass"
+if [ "$skipped" -gt 0 ]; then
+  printf '✅ safety: %s passed, %s SKIPPED — the scan cases did not run\n' "$pass" "$skipped"
+else
+  printf '✅ safety: %s passed\n' "$pass"
+fi
