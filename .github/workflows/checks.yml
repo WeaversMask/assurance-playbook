@@ -1,11 +1,14 @@
 # The checks, on the two systems a reader is likely to have, plus the CI layer of the
 # safety class (TRACKER.md, D-002 and D-005).
 #
-# FIRST RUN, 2026-10-17, on the private repository: ubuntu-latest green with no skipped
-# case, the history job green, and macOS red — every check on it passed, and then the skip
-# step below failed the run, because eleven of the suite's workflow cases needed PyYAML and
-# that runner's python3 has none. They are dependency-free now. The skip step did what it
-# is for. D-002 closes when a single run is green on both systems.
+# RUNS SO FAR, 2026-10-17, on the private repository. First: ubuntu-latest and the history
+# job green, macOS red — every check passed there and then the skip step failed the run,
+# because eleven workflow cases needed PyYAML, which that runner's python3 lacks; they are
+# dependency-free now. Second: all green. The environment step then showed that the Ubuntu
+# runner's awk is GNU Awk 5.2.1, NOT mawk, which is what a stock Debian or Ubuntu has and
+# what a portable awk program is likeliest to break on — so the matrix has a third row that
+# installs mawk, makes it `awk`, and fails if it is not. D-002 closes on a run green on all
+# three.
 #
 # SECURITY, in the order it matters: read-only token; no `pull_request_target`; every
 # action pinned to a full commit SHA (the pins are the ones in
@@ -29,13 +32,19 @@ permissions:
 
 jobs:
   checks:
-    name: checks (${{ matrix.os }})
+    name: checks (${{ matrix.os }}, ${{ matrix.awk }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
+        awk: [default]
+        include:
+          # The Ubuntu runner image ships GNU awk as `awk`, so the default rows never meet
+          # mawk. This row does, and the step below fails if it is not really mawk.
+          - os: ubuntu-latest
+            awk: mawk
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
@@ -49,6 +58,18 @@ jobs:
         run: |
           sh scripts/install-gitleaks.sh
           echo "$PWD/.bin" >> "$GITHUB_PATH"
+
+      - name: Make mawk the awk (the default on stock Debian and Ubuntu)
+        if: matrix.awk == 'mawk'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq mawk
+          sudo update-alternatives --set awk /usr/bin/mawk
+          awk -W version 2>&1 | head -1
+          if ! awk -W version 2>&1 | grep -q '^mawk'; then
+            echo "::error title=awk is not mawk::the mawk row would test nothing"
+            exit 1
+          fi
 
       - name: Environment (for the record)
         run: |

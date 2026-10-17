@@ -170,6 +170,8 @@ flag "a skipped case fails the run" \
   "$(yes_if sh -c 'printf "%s\n" "$1" | awk "/grep -q SKIPPED/ { s = NR } s && NR - s <= 8 && /exit 1/ { ok = 1 } END { exit !ok }"' _ "$jc")"
 flag "gitleaks is installed by the pinned installer, in both jobs" \
   "$(yes_if sh -c 'printf "%s\n" "$1" | grep -q "scripts/install-gitleaks.sh" && printf "%s\n" "$2" | grep -q "scripts/install-gitleaks.sh"' _ "$jc" "$jh")"
+flag "a mawk row exists, and it fails unless awk really is mawk" \
+  "$(yes_if sh -c 'grep -qE "^[[:space:]]*awk:[[:space:]]*mawk" "$1" && printf "%s\n" "$2" | grep -q "grep -q .\^mawk."' _ "$code" "$jc")"
 flag "the history job reads the whole history" \
   "$(yes_if sh -c 'printf "%s\n" "$1" | grep -qE "fetch-depth:[[:space:]]*0"' _ "$jh")"
 flag "the history job does not run on pull requests" \
