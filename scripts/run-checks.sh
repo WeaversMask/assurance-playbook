@@ -44,10 +44,12 @@
 #      ways on its first adversarial pass, four of them silently, printing its
 #      success line with its counts unchanged while the defect walked through.
 #
-#   4. The safety-gate suite. The gate it covers can be narrowed in two
-#      directions — refusing less than it should, or refusing everything — and
-#      its first draft did the second: a declaration it could detect but not
-#      parse blocked every commit. See TRACKER.md, D-004.
+#   4. The safety-gate suites, `check-safety.test.sh` (commits) and
+#      `check-push.test.sh` (pushes and the CI history check). The gates they
+#      cover can be narrowed in two directions — refusing less than they should,
+#      or refusing everything — and the first draft did the second: a declaration
+#      it could detect but not parse blocked every commit. See TRACKER.md, D-004
+#      and D-005.
 #
 # Adding anything else is a decision to make on purpose, not by accretion.
 
@@ -59,4 +61,5 @@ sh "$repo_root/runners/claude/check-skill-sync.test.sh"
 sh "$repo_root/reference/node-pnpm/test/gates.test.sh"
 sh "$repo_root/scripts/check-docs.test.sh"
 sh "$repo_root/scripts/check-safety.test.sh"
+sh "$repo_root/scripts/check-push.test.sh"
 node "$repo_root/scripts/check-docs.mjs"

@@ -119,7 +119,7 @@ and the comparison with the installed copy of the skill.
 | git | GPL-2.0-only | the suites build throwaway repositories |
 | Node.js 22 | MIT | the docs gate, and the decision check under test |
 | Python 3 | Python-2.0 | one docs-suite case |
-| gitleaks | MIT | optional for the checks above, required to commit here — the pre-commit hook scans staged changes |
+| gitleaks | MIT | optional for the checks above, required to commit or push here — the hooks scan staged changes and outgoing commits |
 
 They have only run on macOS so far (D-002).
 

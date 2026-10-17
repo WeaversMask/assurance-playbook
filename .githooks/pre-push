@@ -1,0 +1,78 @@
+#!/usr/bin/env sh
+# The safety class, applied to what is about to LEAVE this machine
+# (identity-protection.md invariant 2, secret-scanning.md invariant 1). Pre-commit
+# examines staged changes; plenty of commits never pass through it — history
+# rewritten after it (rebase, amend), conflict resolutions written during a merge,
+# cherry-picks, and anything made with the hook bypassed or never installed. This
+# hook examines the exact range the push would publish, per ref, so nothing
+# unchecked reaches a remote.
+#
+# NOT SKIPPABLE, and no opt-out marker — same reasons as safety-checks.sh. It shares
+# .githooks/safety-lib.sh with it and with scripts/check-history.sh, so there is one
+# identity parse, one definition of an unarmed patterns file, and one decision about
+# what the scanner may print.
+#
+# `git push --no-verify` skips this hook, as `git commit --no-verify` skips the
+# other. The third layer, the CI history check, is what backstops both.
+#
+# stdin (from git): one line per ref being pushed —
+#   <local-ref> <local-sha> <remote-ref> <remote-sha>
+# $1 is the remote's name. $2, its URL, is deliberately never read: a URL can carry
+# credentials, and this output gets pasted into handovers.
+#
+# EVERY MESSAGE IS CONTENT-FREE — short SHAs, rule ids, file names, line numbers.
+
+set -e
+
+here="$(cd "$(dirname "$0")" && pwd)"
+repo_root="$(git rev-parse --show-toplevel)"
+cd "$repo_root"
+. "$here/safety-lib.sh"
+
+# Everything that needs only git and the shell comes first, as in pre-commit, so a
+# machine without the scanner still gets every one of these checks.
+read_declared_identity
+require_committed_config
+require_patterns_file
+
+nl='
+'
+ranges=""
+while read -r local_ref local_sha remote_ref remote_sha; do
+  # All zeros, in any hash length: deleting a remote ref pushes no commits.
+  case "$local_sha" in *[!0]*) ;; *) continue ;; esac
+
+  case "$remote_sha" in
+    *[!0]*)
+      if git rev-parse --verify -q "${remote_sha}^{commit}" >/dev/null 2>&1; then
+        range="$remote_sha..$local_sha"
+      else
+        # The remote has a tip this clone does not: stale, pruned, or from a remote
+        # never fetched. A range built on it is a range gitleaks cannot resolve, and
+        # it would say "no leaks found" (see scan in the library). Fall back to the
+        # conservative range rather than trusting it.
+        echo "⚠️  safety: the remote's tip for $local_ref is not in this clone — checking every commit not on a remote-tracking ref instead."
+        range="$local_sha --not --remotes"
+      fi ;;
+    *)
+      # A new remote ref: every commit not already on ANY remote-tracking ref. For a
+      # repository's first push that is the whole history. Deliberately broader than
+      # origin/main..HEAD, so a push to a second remote is covered too.
+      range="$local_sha --not --remotes" ;;
+  esac
+
+  check_identity_range "$range" || exit 1
+  check_no_patterns_file_in_range "$range" || exit 1
+  ranges="$ranges$range$nl"
+done
+
+find_scanner
+scan_init
+
+while IFS= read -r range; do
+  [ -n "$range" ] || continue
+  scan "the committed rules (.gitleaks.toml)" "$repo_root/.gitleaks.toml" "the commits being pushed" --log-opts="$range" || exit 1
+  scan "your local patterns (.gitleaks.local.toml)" "$pattern_file" "the commits being pushed" --log-opts="$range" || exit 1
+done <<EOF
+$ranges
+EOF

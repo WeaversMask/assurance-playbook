@@ -13,7 +13,7 @@ is not itself set up that way. Most of what the playbook installs judges a
 project's code — dependencies, tests, coverage, releases, incoming pull requests —
 and this repo has none of those to judge, so those gates would check nothing here.
 *Self-application* below lists the four things that do run. What is still
-missing — CI, and the safety class's other two layers — is an open row in
+missing — a CI run, which has never happened — is an open row in
 [TRACKER.md](TRACKER.md), not an unstated gap.
 
 ## This repository's identity
@@ -94,20 +94,30 @@ about to become public:
    their own fixes four times, once by a change that would have blocked the
    first commit of every bootstrapped repo.
 
-4. **The safety class** — `.githooks/safety-checks.sh`: the commit's author and
-   committer must match the identity declared above, and the staged changes are
-   scanned twice — against the committed `.gitleaks.toml`, and against the
-   maintainer's per-machine `.gitleaks.local.toml`, which the gate requires: a
-   missing, ruleless or still-example file refuses the commit, and so does
-   staging it. Not skippable, by anything. `scripts/check-safety.test.sh` covers
-   it. It is one layer: `--no-verify` skips it, and no pre-push or CI layer
-   exists yet (TRACKER.md, D-005).
+4. **The safety class**, in three layers that share `.githooks/safety-lib.sh`:
+   - **Pre-commit**, `.githooks/safety-checks.sh`: the commit's author and
+     committer must match the identity declared above, and the staged changes are
+     scanned twice — against the committed `.gitleaks.toml`, and against the
+     maintainer's per-machine `.gitleaks.local.toml`, which the gate requires: a
+     missing, ruleless or still-example file refuses the commit, and so does
+     staging it.
+   - **Pre-push**, `.githooks/pre-push`: the exact range the push would publish,
+     checked for identity, for a copy of the patterns file, and against both
+     configs. A first push checks the whole history.
+   - **CI**, `scripts/check-history.sh`: the whole history, committed rules only,
+     because the patterns file cannot live on a runner.
+
+   Not skippable, by anything. `scripts/check-safety.test.sh` and
+   `scripts/check-push.test.sh` cover them. `--no-verify` skips both hooks, which
+   is what the CI layer backstops — and that layer has not yet run on GitHub
+   (TRACKER.md, D-002). There is no bot allowlist, so a web-UI merge, whose
+   committer is GitHub, would be refused until one is added.
 
 Everything runs without committing, as `sh scripts/run-checks.sh`, except two
 checks that are about the maintainer's machine and so run from the hook only: the
 safety gate, which examines the identity and staged changes of a commit that does
-not exist until then, and the skill-copy comparison above. All of it is armed by
-`core.hooksPath=.githooks`.
+not exist until then, and the skill-copy comparison above. The hooks themselves run
+only at commit and push, and all of it is armed by `core.hooksPath=.githooks`.
 
 **If you change any of these gates, add the case that would have caught the
 change you are making, before you make it.** Every case in those suites is one a review
