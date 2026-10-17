@@ -104,8 +104,9 @@ about to become public:
    - **Pre-push**, `.githooks/pre-push`: the exact range the push would publish,
      checked for identity, for a copy of the patterns file, and against both
      configs. A first push checks the whole history.
-   - **CI**, `scripts/check-history.sh`: the whole history, committed rules only,
-     because the patterns file cannot live on a runner.
+   - **CI**, `scripts/check-history.sh`, run by `.github/workflows/checks.yml`
+     (which also runs every check on Linux and macOS): the whole history,
+     committed rules only, because the patterns file cannot live on a runner.
 
    Not skippable, by anything. `scripts/check-safety.test.sh` and
    `scripts/check-push.test.sh` cover them. `--no-verify` skips both hooks, which

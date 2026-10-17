@@ -119,9 +119,9 @@ and the comparison with the installed copy of the skill.
 | git | GPL-2.0-only | the suites build throwaway repositories |
 | Node.js 22 | MIT | the docs gate, and the decision check under test |
 | Python 3 | Python-2.0 | one docs-suite case |
-| gitleaks | MIT | optional for the checks above, required to commit or push here — the hooks scan staged changes and outgoing commits |
+| gitleaks | MIT | optional for the checks above, required to commit or push here — the hooks scan staged changes and outgoing commits. `sh scripts/install-gitleaks.sh` installs a pinned, checksum-verified copy into `.bin/` |
 
-They have only run on macOS so far (D-002).
+They have run on macOS, and on macOS with Ubuntu's `sh` (dash) standing in for `sh`. They have not run on Linux itself: [the workflow](.github/workflows/checks.yml) that will is written but has never run (D-002).
 
 ## Built with an earlier version
 

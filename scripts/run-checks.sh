@@ -51,6 +51,10 @@
 #      it could detect but not parse blocked every commit. See TRACKER.md, D-004
 #      and D-005.
 #
+#   5. The CI suite, `check-ci.test.sh`: the gitleaks installer's failure paths and
+#      the workflow's security properties. It cannot cover the installer's success
+#      path or the workflow running, which only a real CI run exercises (D-002).
+#
 # Adding anything else is a decision to make on purpose, not by accretion.
 
 set -e
@@ -62,4 +66,5 @@ sh "$repo_root/reference/node-pnpm/test/gates.test.sh"
 sh "$repo_root/scripts/check-docs.test.sh"
 sh "$repo_root/scripts/check-safety.test.sh"
 sh "$repo_root/scripts/check-push.test.sh"
+sh "$repo_root/scripts/check-ci.test.sh"
 node "$repo_root/scripts/check-docs.mjs"

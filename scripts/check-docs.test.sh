@@ -48,7 +48,9 @@ fail=0
 # have duplicated the maintainer's personal identifiers into a temp directory.
 # Private and removed on exit, but a copy that survives a killed run is a copy of
 # exactly what that file exists to keep out of reach. Nothing here reads it.
-( cd "$root" && tar --exclude=.git --exclude=.DS_Store --exclude=.gitleaks.local.toml -cf - . ) | ( mkdir -p "$work/pristine" && cd "$work/pristine" && tar -xf - )
+# NOR THE INSTALLED SCANNER: `.bin/` holds a ~15 MB binary in CI, and every `reset_tree` below
+# would copy it again, about 25 times a run, for a gate that reads markdown.
+( cd "$root" && tar --exclude=.git --exclude=.DS_Store --exclude=.gitleaks.local.toml --exclude=.bin -cf - . ) | ( mkdir -p "$work/pristine" && cd "$work/pristine" && tar -xf - )
 
 tree="$work/tree"
 reset_tree() { rm -rf "$tree"; cp -R "$work/pristine" "$tree"; }
@@ -107,6 +109,11 @@ echo "check-docs.mjs"
 # On a machine without the file this is vacuous; on the maintainer's it is the
 # whole point. Mutation-tested against a scratch tree holding a DUMMY file of that
 # name — removing the exclusion above turns this red.
+if [ -e "$work/pristine/.bin" ]; then
+  fail=$((fail + 1)); printf '  FAIL  %s\n' "the installed scanner was copied into a fixture"
+else
+  pass=$((pass + 1)); printf '  ok    %s\n' "the installed scanner is not copied into a fixture"
+fi
 if [ -e "$work/pristine/.gitleaks.local.toml" ]; then
   fail=$((fail + 1)); printf '  FAIL  %s\n' "the maintainer's patterns file was copied into a fixture"
 else

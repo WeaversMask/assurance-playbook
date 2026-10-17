@@ -2,3 +2,4 @@
 .gitleaks.local.toml
 
 .DS_Store
+.bin/

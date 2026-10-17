@@ -1,0 +1,95 @@
+# The checks, on the two systems a reader is likely to have, plus the CI layer of the
+# safety class (TRACKER.md, D-002 and D-005).
+#
+# THIS WORKFLOW HAS NEVER RUN. There is no remote yet. What was checked before it was
+# written: every suite passes with Ubuntu's `sh` (dash) standing in for `sh`; each `run:`
+# block below was extracted from this file and executed locally, in order, from a clone,
+# with the installer meeting an already-installed scanner so that nothing was downloaded;
+# and the two steps that decide pass or fail were run against a failing input. What was
+# NOT checked: the download itself, GNU sed/grep/awk, mawk (the default awk on Ubuntu),
+# the actions, and the runners. The first run is the first time any of those are met, so
+# expect findings; finding them is its job, and D-002 stays open until a run is green on
+# both systems.
+#
+# SECURITY, in the order it matters: read-only token; no `pull_request_target`; every
+# action pinned to a full commit SHA (the pins are the ones in
+# reference/node-pnpm/ci/ci.yml); no secrets; nothing from the event is interpolated
+# into a shell command. scripts/check-ci.test.sh fails if any of that is loosened.
+#
+# A SKIPPED CASE IS COVERAGE THAT DID NOT RUN. The suites skip their scan cases when
+# gitleaks is missing, and say so; on a laptop that is a courtesy, here it would turn
+# 20-odd cases into a green tick. The last step of the first job fails on any skip.
+
+name: checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: checks (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22"
+
+      - name: Install gitleaks (pinned, checksum-verified)
+        run: |
+          sh scripts/install-gitleaks.sh
+          echo "$PWD/.bin" >> "$GITHUB_PATH"
+
+      - name: Run every check
+        run: |
+          rc=0
+          sh scripts/run-checks.sh > checks.log 2>&1 || rc=$?
+          cat checks.log
+          exit "$rc"
+
+      - name: No case may have been skipped
+        run: |
+          if grep -q SKIPPED checks.log; then
+            echo "::error title=Cases were skipped::a skipped case is coverage that did not run"
+            grep SKIPPED checks.log
+            exit 1
+          fi
+
+  # The CI layer of the safety class: the whole history of the pushed ref must have
+  # been made as the declared identity and scan clean against the COMMITTED rules. It
+  # cannot apply the maintainer's local patterns (they cannot live on a runner), so
+  # the pre-push hook is where personal identifiers are caught. Not run on pull
+  # requests: GitHub's synthetic merge commit is committed by "GitHub", which the
+  # identity check would rightly refuse.
+  history:
+    name: history (identity and secrets)
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install gitleaks (pinned, checksum-verified)
+        run: |
+          sh scripts/install-gitleaks.sh
+          echo "$PWD/.bin" >> "$GITHUB_PATH"
+
+      - name: Check the whole history
+        run: sh scripts/check-history.sh
