@@ -818,6 +818,58 @@ else
 fi
 
 # ═══════════════════════════════════════════════════════════════════════════
+# 5. The committed home-path rule
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# This file shipped to every bootstrapped project with no test at all, and no
+# `/home/` path had ever been planted anywhere. Found 2026-10-17 by trying to fix
+# `--redact`'s gap (see gitleaks.toml): making the prefix group non-capturing hides
+# the whole match and, with the default rules extended, silently stops catching
+# EVERY `/home/<name>/` path — 9 of 9 account names — while `/Users/` ones are
+# still caught. Each prefix therefore has its own case. Planted values are
+# constructed with printf, never written.
+
+echo
+echo "the committed home-path rule (gitleaks.toml)"
+if [ -z "$gl" ]; then
+  skipped=$((skipped + 7))
+  printf '  SKIP  gitleaks not found (probe: command -v gitleaks, %s)\n' "$(date +%Y-%m-%d)"
+else
+  hp=0
+  for spec in 'a /Users/ path|run: cd /Users/%s/proj' 'a /home/ path|run: cd /home/%s/proj' 'a C:\Users\ path|run: cd C:\\Users\\%s\\proj'; do
+    for who in someone qzxv; do
+      hp=$((hp + 1)); h2="$work/prefix-$hp"; mkdir -p "$h2"
+      ( unset GIT_AUTHOR_NAME GIT_AUTHOR_EMAIL GIT_COMMITTER_NAME GIT_COMMITTER_EMAIL \
+              GIT_DIR GIT_INDEX_FILE GIT_WORK_TREE GIT_PREFIX GIT_CONFIG_PARAMETERS
+        cd "$h2" || exit 1
+        git init -q . && git config user.name t && git config user.email t@example.invalid
+        cp "$ref/gitleaks.toml" .gitleaks.toml
+        printf "${spec#*|}\n" "$who" > planted.md && git add planted.md )
+      vout="$( cd "$h2" && "$gl" git --staged --redact -v --no-banner --exit-code 2 --config .gitleaks.toml 2>&1 )" && vgot=0 || vgot=$?
+      if [ "$vgot" -ne 0 ] && printf '%s' "$vout" | grep -q absolute-home-path; then
+        pass=$((pass + 1)); printf '  ok    %s (%s) is caught by the committed rule\n' "${spec%%|*}" "$who"
+      else
+        fail=$((fail + 1)); printf '  FAIL  %s (%s) is caught by the committed rule (exit %s)\n' "${spec%%|*}" "$who" "$vgot"
+      fi
+    done
+  done
+  # Runner homes are public knowledge and must stay allowed.
+  rr="$work/redaction-runner"; mkdir -p "$rr"
+  ( unset GIT_AUTHOR_NAME GIT_AUTHOR_EMAIL GIT_COMMITTER_NAME GIT_COMMITTER_EMAIL \
+          GIT_DIR GIT_INDEX_FILE GIT_WORK_TREE GIT_PREFIX GIT_CONFIG_PARAMETERS
+    cd "$rr" || exit 1
+    git init -q . && git config user.name t && git config user.email t@example.invalid
+    cp "$ref/gitleaks.toml" .gitleaks.toml
+    printf 'ci: /home/%s/work/x\n' runner > ci.md && git add ci.md )
+  ( cd "$rr" && "$gl" git --staged --redact --no-banner --exit-code 2 --config .gitleaks.toml >/dev/null 2>&1 ) && rgot=0 || rgot=$?
+  if [ "$rgot" -eq 0 ]; then
+    pass=$((pass + 1)); printf '  ok    a CI runner path is still allowed through\n'
+  else
+    fail=$((fail + 1)); printf '  FAIL  a CI runner path is still allowed through (exit %s)\n' "$rgot"
+  fi
+fi
+
+# ═══════════════════════════════════════════════════════════════════════════
 echo
 if [ "$fail" -gt 0 ]; then
   printf '❌ gates: %s passed, %s FAILED\n' "$pass" "$fail"

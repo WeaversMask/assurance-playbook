@@ -25,6 +25,21 @@ useDefault = true
 #
 # Agents write these constantly: a handover that says "cd /Users/x/proj
 # first" is the natural way to record a shell gotcha.
+#
+# TWO LIMITS, both verified 2026-10-17 against gitleaks 8.30.1:
+#
+# 1. `--redact` hides only a rule's SECRET GROUP, and here that group is the
+#    folder prefix — so a VERBOSE finding or a JSON report reads
+#    `cd REDACTED<account>/project` and prints the very name this rule exists to
+#    keep out. Nothing committed asks for either: the hooks print gitleaks'
+#    summary only. Do not add `-v`, and do not keep a report of this rule's
+#    findings.
+#
+# 2. Do NOT "fix" that by making the prefix group non-capturing. With the whole
+#    match as the secret, and the default rules extended as below, every
+#    `/home/<name>/` path stops being caught — 9 of 9 account names missed — while
+#    `/Users/` paths still are. `secretGroup = 0` changes nothing. Detection is the
+#    job; the redaction gap is a rule for whoever runs the scanner.
 [[rules]]
 id = "absolute-home-path"
 description = "Absolute home-directory path — discloses the machine account name"

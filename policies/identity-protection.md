@@ -89,6 +89,19 @@
      arms the highest-frequency case from the first commit with no manual
      step at all.
 
+     **Two limits of that rule, both verified against gitleaks 8.30.1.**
+     `--redact` hides only a rule's *secret group*, and here that group is the
+     folder prefix — so a verbose finding or a JSON report reads
+     `cd REDACTED<account>/project` and prints the name the rule exists to keep
+     out. Nothing committed asks for either, so this is latent: the first person
+     to debug a failing scan with `-v` on a public repo's CI would be the one to
+     publish it. Do not add `-v`; do not keep a report of this rule's findings.
+     And do **not** close the gap by making the prefix non-capturing: with the
+     whole match as the secret and the default rules extended, every `/home/<name>/`
+     path stops being caught while `/Users/` ones still are. A fix that loses half
+     the rule is worse than the leak it closes, and a suite that never planted a
+     `/home/` path would not notice — so each prefix has its own case.
+
    - **An existing file is not an armed file.** The example ships placeholder
      values behind a marker comment on every fillable line, and the hooks
      **reject any local config that still carries one**. Without this, the

@@ -234,6 +234,38 @@ in_fixture "$d" sh -c 'git reset -q --hard && printf "nothing suspicious\n" > no
 check "an ordinary staged file is not refused" 0 "$d" ""
 fi
 
+# ── The committed rule catches every prefix it claims ───────────────────────
+# Found 2026-10-17 while trying to fix `--redact`'s gap (see .gitleaks.toml).
+# Making the prefix group non-capturing hides the whole match — and, with the
+# default rules extended, which this config does, silently stops catching EVERY
+# `/home/<name>/` path (9 of 9 account names missed) while `/Users/` ones are still
+# caught. No case here planted a `/home/` path, so that edit passed every suite. A
+# branch of a pattern with no case is a branch that can be deleted, so each prefix
+# has its own. Planted values are constructed, never written.
+if needs_scanner "the committed home-path rule catches every prefix it claims" 7; then
+hp=0
+for spec in 'a /Users/ path|run: cd /Users/%s/proj' 'a /home/ path|run: cd /home/%s/proj' 'a C:\Users\ path|run: cd C:\\Users\\%s\\proj'; do
+  for who in someone qzxv; do
+    hp=$((hp + 1)); h2="$work/prefix-$hp"; mkdir -p "$h2"
+    ( clear_git_env; cd "$h2" || exit 1
+      git init -q . && git config user.name t && git config user.email t@example.invalid
+      cp "$config" .gitleaks.toml
+      printf "${spec#*|}\n" "$who" > planted.md && git add planted.md )
+    if vout="$( in_fixture "$h2" gitleaks git --staged --redact -v --no-banner --exit-code 2 --config .gitleaks.toml 2>&1 )"; then vgot=0; else vgot=$?; fi
+    verdict "${spec%%|*} ($who) is caught by the committed rule" 1 "$vgot" "absolute-home-path" "$vout"
+  done
+done
+# CI runner homes are public knowledge and must stay allowed. This case was vacuous
+# while `/home/` was being missed anyway: removing the allowlist changed nothing.
+rr="$work/redaction-runner"; mkdir -p "$rr"
+( clear_git_env; cd "$rr" || exit 1
+  git init -q . && git config user.name t && git config user.email t@example.invalid
+  cp "$config" .gitleaks.toml
+  printf 'ci: /home/%s/work/x\n' runner > ci.md && git add ci.md )
+if rout="$( in_fixture "$rr" gitleaks git --staged --redact --no-banner --exit-code 2 --config .gitleaks.toml 2>&1 )"; then rgot=0; else rgot=$?; fi
+verdict "a CI runner path is still allowed through" 0 "$rgot" "" "$rout"
+fi
+
 # ── The local scan layer ────────────────────────────────────────────────────
 # A token only the LOCAL rule matches, so only the local pass can refuse it — and
 # the refusal must name that rule, which is what proves which layer spoke.
