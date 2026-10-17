@@ -63,7 +63,7 @@ all.
 | `decisions/catalogue.md`    | The 22 questions a project answers at Phase 0 — default, alternatives, how to tell which applies, what each branch costs, and where the answer is recorded |
 | `decisions/mechanism-rubric.md` | Seven criteria for scoring a mechanism the playbook has never heard of, with a pass rule and a worked example. Replaces the tool table that used to rot here |
 | `reference/node-pnpm/`      | Real hooks, CI, and scripts — a worked example, not a copy source                                                                               |
-| `templates/`                | Runner-agnostic starting files: `AGENTS.md`, project plan, tracker with its decision table, ADR/PR/handover/task/package-README templates, the bootstrap summary, the go-public checklist, and the local scanner-patterns example |
+| `templates/`                | Runner-agnostic starting files: `AGENTS.md`, project plan, tracker with its decision table, ADR/PR/handover/task/package-README templates, the bootstrap summary, the go-public checklist, the portable decision-trigger check, and the local scanner-patterns example |
 | `runners/`                  | Runner-specific furniture, installed only for the harness a project names. `runners/claude/` holds the skill (canonical copy; installed at `~/.claude/skills/bootstrap-assurance/`), the harness entry-file template, and the sync check |
 | `scripts/`                  | This repo's own maintenance checks — currently the documentation-consistency gate. Not part of what a project installs                            |
 | `TRACKER.md`                | This repo's own Phase 0 answers and open decisions. Not part of what a project installs                                                          |
@@ -101,11 +101,11 @@ repo's docs.
 **To use the playbook:** git, plus whatever your own stack needs. `BOOTSTRAP.md`
 derives each gate's mechanism for your stack, so the tools are chosen per project.
 
-**One cost to know before you start.** The decision-trigger check (Phase 2.10) is
-mandatory at every tier, and its only worked implementation is a Node script,
-`reference/node-pnpm/scripts/check-decisions.mjs`. On any other stack, run it under
-Node or write the equivalent — the shape that ports is described in its header. A
-portable implementation is an open decision in [TRACKER.md](TRACKER.md) (D-001).
+**The decision-trigger check** (Phase 2.10) is mandatory at every tier, and needs
+nothing installed: [`templates/check-decisions.sh`](templates/check-decisions.sh) is
+POSIX sh and awk, held to the same behaviour as the Node original in
+`reference/node-pnpm/` — every regression case runs against both. It is ASCII-only,
+and has run only on macOS's awk so far (D-002).
 
 **To run this repository's own checks** — `sh scripts/run-checks.sh`, which
 needs no git configuration and commits nothing. Two checks run only when

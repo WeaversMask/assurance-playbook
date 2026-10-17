@@ -57,6 +57,7 @@ tmpl="$ref/../../templates"
 for needed in \
   "$ref/hooks/pre-commit" \
   "$ref/scripts/check-decisions.mjs" \
+  "$tmpl/check-decisions.sh" \
   "$tmpl/gitleaks.local.example.toml" \
   "$tmpl/IMPLEMENTATION.skeleton.md"; do
   [ -f "$needed" ] || { printf '❌ gates: required input missing: %s\n' "$needed"; exit 1; }
@@ -101,14 +102,27 @@ expect() { name="$1"; want="$2"; shift 2; _check "$name" "$want" "" "$@"; }
 expect_msg() { _check "$@"; }
 
 # ═══════════════════════════════════════════════════════════════════════════
-# 1. check-decisions.mjs
+# 1. The decision-trigger check — the original and its portable port
 # ═══════════════════════════════════════════════════════════════════════════
-echo "check-decisions.mjs"
+# EVERY CASE BELOW RUNS AGAINST BOTH IMPLEMENTATIONS: the Node original and the
+# portable port in templates/check-decisions.sh. They are one function called twice,
+# so a case added for one binds the other — which is the only way a port stays a
+# port. Each was found by a review of the original, and the port was also diffed
+# byte for byte against it over thousands of generated trackers; what this suite
+# adds is that the equivalence is checked on every commit, not once.
+decision_cases() {
+impl="$1"
+echo "$2"
 
-d="$work/decisions"
+d="$work/decisions-$impl"
 mkdir -p "$d/scripts" "$d/docs"
-cp "$ref/scripts/check-decisions.mjs" "$d/scripts/"
-run_decisions() { node "$d/scripts/check-decisions.mjs"; }
+if [ "$impl" = sh ]; then
+  cp "$tmpl/check-decisions.sh" "$d/scripts/"
+  run_decisions() { sh "$d/scripts/check-decisions.sh"; }
+else
+  cp "$ref/scripts/check-decisions.mjs" "$d/scripts/"
+  run_decisions() { node "$d/scripts/check-decisions.mjs"; }
+fi
 
 tracker() { cat > "$d/docs/IMPLEMENTATION.md"; }
 
@@ -135,13 +149,13 @@ tracker <<EOF
 $(printf '%s' "$HEAD_OK" | sed 's/P1-04/P3-02/')
 | D-000 | open | — | P1-start | 2026-09-01 |
 EOF
-expect "passed phase boundary blocks" 1 run_decisions
+expect_msg "passed phase boundary blocks" 1 "has passed \(current phase P3-02\)" run_decisions
 
 tracker <<EOF
 $HEAD_OK
 | D-000 | open | — | 2026-01-01 | 2026-09-01 |
 EOF
-expect "passed date blocks" 1 run_decisions
+expect_msg "passed date blocks" 1 "trigger date 2026-01-01 has passed" run_decisions
 
 # REVIEW FINDING: completion was tested per line for a word list, so a tracker
 # whose completed rows carry no tick — which is the shape the template ships —
@@ -229,19 +243,19 @@ tracker <<EOF
 $HEAD_OK
 | D-000 | open | — |  | 2026-09-01 |
 EOF
-expect "open row with no trigger blocks" 1 run_decisions
+expect_msg "open row with no trigger blocks" 1 "open row with no trigger" run_decisions
 
 tracker <<EOF
 $HEAD_OK
 | D-000 | open | — | until Vite 8 helps | 2026-09-01 |
 EOF
-expect "prose trigger blocks" 1 run_decisions
+expect_msg "prose trigger blocks" 1 "not a date, not a phase boundary" run_decisions
 
 tracker <<EOF
 $HEAD_OK
 | D-000 | open | — | T-999 | 2026-09-01 |
 EOF
-expect "unresolvable id blocks" 1 run_decisions
+expect_msg "unresolvable id blocks" 1 "resolves to no task id" run_decisions
 
 tracker <<EOF
 $HEAD_OK
@@ -254,21 +268,23 @@ tracker <<EOF
 $HEAD_OK
 | **D-000** | missing cells |
 EOF
-expect "malformed row is reported, not skipped" 1 run_decisions
+expect_msg "malformed row is reported, not skipped" 1 "will not parse" run_decisions
 
 tracker <<'EOF'
 ## Current state
 - **Phase:** P1-04
 EOF
-expect "missing section blocks" 1 run_decisions
+# Exit-code only, this passed when the missing-section branch was REMOVED: the run fell
+# through to the zero-rows branch and exited 1 there. Found by mutating the port.
+expect_msg "missing section blocks" 1 'no .## Open decisions. section' run_decisions
 
 tracker <<EOF
 $HEAD_OK
 EOF
-expect "zero rows blocks" 1 run_decisions
+expect_msg "zero rows blocks" 1 "has no rows" run_decisions
 
 rm -f "$d/docs/IMPLEMENTATION.md"
-expect "missing tracker blocks" 1 run_decisions
+expect_msg "missing tracker blocks" 1 "cannot read docs/IMPLEMENTATION.md \(ENOENT\)" run_decisions
 
 # THE ONE THAT MATTERED MOST: the gate must run against the template this repo
 # actually ships. It did not, for the whole of its first life.
@@ -361,6 +377,36 @@ tracker <<'EOF'
 EOF
 expect_msg "the Trigger column is found by header, not index" 1 "trigger date 2026-01-01 has passed" run_decisions
 
+# m16: `p.major >= major` could become `>` unnoticed. Every fixture had the current
+# phase strictly before or strictly after the boundary it named; the common case — a
+# phase that has STARTED, in the phase itself — was never exercised. Found by
+# mutating the port, and it binds the original too.
+tracker <<EOF
+$HEAD_OK
+| D-000 | open | — | P1-start | 2026-09-01 |
+EOF
+expect_msg "a phase-start trigger fires in the phase it names" 1 "trigger .P1-start. has passed" run_decisions
+
+# m17: m15 says `in progress` AND `blocked` could be dropped from the task sections,
+# but only `in progress` had a fixture. Found by mutating the port.
+tracker <<'EOF'
+## Current state
+- **Phase:** P1-04 — x
+## Blocked
+| ID | Task | Blocker | Since |
+| --- | --- | --- | --- |
+| T-008 | stuck | review | 2026-09-01 |
+## Recently completed
+| ID | Task | PR | Merged |
+| --- | --- | --- | --- |
+| T-001 | shipped | #12 | 2026-09-01 |
+## Open decisions
+| ID | Decision needed | Recommendation | Trigger | Raised |
+| --- | --- | --- | --- | --- |
+| D-000 | open | — | T-008 | 2026-09-01 |
+EOF
+expect "a trigger naming blocked work resolves" 0 run_decisions
+
 # m4: the inline `**Trigger:**` form is documented as still in use.
 tracker <<'EOF'
 ## Current state
@@ -371,6 +417,11 @@ tracker <<'EOF'
 | D-000 | old-style row | — **Trigger:** P1-start | 2026-09-01 |
 EOF
 expect_msg "the inline Trigger form still parses" 1 "trigger .P1-start. has passed" run_decisions
+
+}
+
+decision_cases node "check-decisions.mjs"
+decision_cases sh "check-decisions.sh (the portable port, same cases)"
 
 # ═══════════════════════════════════════════════════════════════════════════
 # 2. The pre-commit local-config states

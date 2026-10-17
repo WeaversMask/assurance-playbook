@@ -290,15 +290,18 @@ fresh install is the worst possible time to debug a misattributed error.
     tier decision itself carry triggers, and without something reading them
     "we'll consider it later" is where deferred quality goes to die — which
     would make the advisor strictly worse than the installer it replaced.
-    `reference/node-pnpm/scripts/check-decisions.mjs` is a worked
-    implementation; the tracker needs its `Trigger` column
-    (`templates/IMPLEMENTATION.skeleton.md`).
+    `templates/check-decisions.sh` is a portable implementation — POSIX sh and
+    awk, nothing else to install — to copy into the project's `scripts/`;
+    `reference/node-pnpm/scripts/check-decisions.mjs` is the original it was
+    ported from. The two are held to the same behaviour: every regression case
+    in `reference/node-pnpm/test/gates.test.sh` runs against both. The tracker
+    needs the `Trigger` column (`templates/IMPLEMENTATION.skeleton.md`).
 
-    **That worked implementation is the only one, and it is Node.** Like the
-    identity gates in item 4, this check is written rather than chosen — no
-    stack ships it — so on any other stack, run the exhibit under Node or write
-    the equivalent from the shape its header describes. Budget for that before
-    Phase 2 starts, not on reaching this item.
+    Two limits of the portable one, stated rather than discovered: it measures
+    task ids in bytes, so it is ASCII-only, and it has run only on macOS's awk —
+    it is written to the POSIX subset, which is argued, not observed
+    (TRACKER.md, D-002). Where the tracker is not `docs/IMPLEMENTATION.md`, the
+    path is one line in each script.
 
 11. **Budget gates** (tier 3 only, and only where agent or model budget is
     actually being spent): each control that exists for *cost* rather than
