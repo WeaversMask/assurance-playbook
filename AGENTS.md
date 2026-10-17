@@ -13,15 +13,15 @@ is not itself set up that way. Most of what the playbook installs judges a
 project's code — dependencies, tests, coverage, releases, incoming pull requests —
 and this repo has none of those to judge, so those gates would check nothing here.
 *Self-application* below lists the four things that do run. What is still
-missing — CI, and the local half of the personal-identifier layer — is an open
-row in [TRACKER.md](TRACKER.md), not an unstated gap.
+missing — CI, and the safety class's other two layers — is an open row in
+[TRACKER.md](TRACKER.md), not an unstated gap.
 
 ## This repository's identity
 
 **Commits only as `WeaversMask <131781531+WeaversMask@users.noreply.github.com>`**,
 from repo-local git config — never inherited from global config. **Pseudonymous:
-yes.** Nothing verifies either yet (`TRACKER.md`, D-004): until something does,
-this is a declaration, not a gate.
+yes.** The identity is enforced on every commit (*Self-application*, item 4).
+Pseudonymity itself is a decision, and no gate can verify a decision.
 
 ## What is here
 
@@ -94,9 +94,12 @@ about to become public:
 
 4. **The safety class** — `.githooks/safety-checks.sh`: the commit's author and
    committer must match the identity declared above, and the staged changes are
-   scanned against the committed `.gitleaks.toml`. Not skippable, by anything.
-   `scripts/check-safety.test.sh` covers it. The per-machine half of the
-   personal-identifier layer is not armed yet (TRACKER.md, D-004).
+   scanned twice — against the committed `.gitleaks.toml`, and against the
+   maintainer's per-machine `.gitleaks.local.toml`, which the gate requires: a
+   missing, ruleless or still-example file refuses the commit, and so does
+   staging it. Not skippable, by anything. `scripts/check-safety.test.sh` covers
+   it. It is one layer: `--no-verify` skips it, and no pre-push or CI layer
+   exists yet (TRACKER.md, D-005).
 
 All four suites run without committing, as `sh scripts/run-checks.sh`. The
 safety gate itself runs only on a commit, because what it examines — the
