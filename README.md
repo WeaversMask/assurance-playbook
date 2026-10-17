@@ -108,7 +108,10 @@ Node or write the equivalent — the shape that ports is described in its header
 portable implementation is an open decision in [TRACKER.md](TRACKER.md) (D-001).
 
 **To run this repository's own checks** — `sh scripts/run-checks.sh`, which
-needs no git configuration and commits nothing:
+needs no git configuration and commits nothing. Two checks run only when
+committing here, because they are about the maintainer's machine: the safety gate,
+and the comparison with the installed copy of the skill.
+
 
 | Tool | Licence | Needed for |
 | --- | --- | --- |

@@ -1,16 +1,19 @@
 #!/usr/bin/env sh
 # Pre-commit hook for the assurance playbook itself.
 #
-# It runs two things, and the order is correctness rather than preference:
+# It runs three things, and the order is correctness rather than preference:
 #
 #   1. The safety class, in `.githooks/safety-checks.sh` — the declared identity,
 #      the maintainer's per-machine patterns file, and a scan of the staged
 #      changes against both scanner configs. It runs FIRST because it is the
 #      cheap one and the one whose failure matters most: a leak should be refused
 #      before the test suites spend a minute agreeing the repo is tidy.
-#   2. The verification checks, in `scripts/run-checks.sh`, which anyone can run
-#      without committing. That script carries the argument for why there are
-#      three of them and not more.
+#   2. The skill-copy freshness check, `runners/claude/check-skill-sync.sh`. It
+#      compares the canonical skill with the copy installed on THIS machine, so
+#      it cannot be one of the checks anyone else runs.
+#   3. The verification checks, in `scripts/run-checks.sh`, which anyone can run
+#      without committing. That script carries the argument for why each earns
+#      its place.
 #
 # ACTIVATION: `git config core.hooksPath .githooks`. Committing this file does not
 # arm it — a hook in the tree that nobody configured is exactly the kind of
@@ -22,8 +25,8 @@
 # installed there later stops running silently, so a second hook belongs in this
 # directory rather than that one.
 #
-# The checks run on every commit rather than only on commits touching the skill,
-# because the drift the first one catches is usually introduced by editing the
+# The skill check runs on every commit rather than only on commits touching the
+# skill, because the drift it catches is usually introduced by editing the
 # INSTALLED copy — which leaves no trace in this repo's staged changes at all.
 
 set -e
@@ -31,4 +34,5 @@ set -e
 repo_root="$(git rev-parse --show-toplevel)"
 
 sh "$repo_root/.githooks/safety-checks.sh"
+sh "$repo_root/runners/claude/check-skill-sync.sh"
 sh "$repo_root/scripts/run-checks.sh"

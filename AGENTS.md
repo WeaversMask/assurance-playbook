@@ -73,7 +73,9 @@ about to become public:
 
 1. **The skill-copy freshness check.** The two copies drifted for a full release,
    leaving guidance here that the copy which actually runs did not have.
-   `runners/claude/check-skill-sync.sh`.
+   `runners/claude/check-skill-sync.sh`. It runs from the hook only: it compares
+   against the copy installed on this machine, so anywhere else it would fail for
+   the wrong reason.
 2. **`scripts/check-docs.mjs`** — path citations, `Phase N.M` cross-references,
    phase item ordering, and the catalogue's own counts and fields. Eight of the
    nine regressions on this branch were in markdown and none had mechanical
@@ -101,10 +103,11 @@ about to become public:
    it. It is one layer: `--no-verify` skips it, and no pre-push or CI layer
    exists yet (TRACKER.md, D-005).
 
-All four suites run without committing, as `sh scripts/run-checks.sh`. The
-safety gate itself runs only on a commit, because what it examines — the
-identity of the commit being made, and its staged changes — does not exist
-until then. All of it is armed by `core.hooksPath=.githooks`.
+Everything runs without committing, as `sh scripts/run-checks.sh`, except two
+checks that are about the maintainer's machine and so run from the hook only: the
+safety gate, which examines the identity and staged changes of a commit that does
+not exist until then, and the skill-copy comparison above. All of it is armed by
+`core.hooksPath=.githooks`.
 
 **If you change any of these gates, add the case that would have caught the
 change you are making, before you make it.** Every case in those suites is one a review

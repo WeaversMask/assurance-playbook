@@ -5,10 +5,12 @@
 #   sh scripts/run-checks.sh
 #
 # They are also what `.githooks/pre-commit` runs. THE SPLIT IS DELIBERATE. The
-# hook additionally enforces the safety class, which requires a per-machine file
-# only the maintainer can write — so a reader who cloned this repo to try the
-# checks would be blocked by a gate that has nothing to do with them. Anyone can
-# run this; only the maintainer can commit.
+# hook additionally runs the two checks that are about the maintainer's machine —
+# the safety class, which requires a per-machine file only the maintainer can
+# write, and the comparison with the skill copy installed on that machine. A
+# reader who cloned this repo to try the checks would be blocked by both, for
+# reasons that have nothing to do with the checks. Anyone can run this; only the
+# maintainer can commit.
 #
 # SCOPE, deliberately narrow. This repo does NOT self-apply the playbook. Most of
 # what the playbook installs judges a project's code — dependencies, tests,
@@ -18,6 +20,11 @@
 #
 #   1. The skill-copy freshness check. The two copies drifted for a full
 #      release, leaving guidance here that the copy which actually runs lacked.
+#      NOT RUN FROM THIS SCRIPT: it compares the canonical copy with the one
+#      installed on THIS machine, which means nothing on a reader's or in CI, and
+#      fails closed there — correctly, because they have no installed copy — as
+#      the first line of output. `.githooks/pre-commit` runs it. Its suite does
+#      run here, on fixtures.
 #
 #   2. The documentation-consistency check. Eight of the nine regressions on
 #      that branch were in markdown — a moved directory, a renumbered phase, a
@@ -48,7 +55,6 @@ set -e
 
 repo_root="$(git rev-parse --show-toplevel)"
 
-sh "$repo_root/runners/claude/check-skill-sync.sh"
 sh "$repo_root/runners/claude/check-skill-sync.test.sh"
 sh "$repo_root/reference/node-pnpm/test/gates.test.sh"
 sh "$repo_root/scripts/check-docs.test.sh"
