@@ -13,7 +13,7 @@
 
 | Entry | Answer | Recorded as |
 | --- | --- | --- |
-| T0 — tier | Not yet self-assessed. The escalator sets a floor of 2, because the repo will be public. | open — D-000 |
+| T0 — tier | **3.** Asked as the catalogue asks it — if this were wrong tomorrow, how would you find out? A wrong instruction here is carried out by an agent in someone else's repository and looks right until that project fails, which is the definition of 3; the public-repo escalator alone gives 2. It applies to the content, not the gate set: this repo runs only the four things AGENTS.md lists, because most of what a tier gates judges code this repo does not contain. **The 12 catalogue entries that tier 2 and 3 admit are not yet worked here**; most are plainly n/a (no code to test, no dependencies to allowlist), but that is not yet recorded per entry. | answered 2026-10-17 — the agent's recommendation, applied at the maintainer's instruction; change it freely |
 | A1 — pseudonymous | Yes. Every commit since the first is under the pseudonym. | default — announced, not asked |
 | A2 — persona | Shared: **WeaversMask**, the persona Argus and Gradient also commit as. Declared in `AGENTS.md`. Consequence accepted: publishing this repo publishes its gate set, and a distinctive gate set is a signature ([identity-protection.md](policies/identity-protection.md) invariant 8), so a later project that must stay unlinkable from this persona cannot adopt these gates unmodified. | asked, 2026-09-11 |
 | A3 — visibility | Public, read-only, no pull requests yet — a divergence from the default. What the repo protects is kept outside it by design (invariant 5), so it is publishable as built. A project records a divergence as an ADR; this repo has no ADR directory, so the reason is this row. | asked, 2026-09-11 |
@@ -27,7 +27,7 @@
 
 | ID | Decision needed | Recommendation | Trigger | Raised |
 | --- | --- | --- | --- | --- |
-| D-000 | **Assurance tier** — floor 2 from the public escalator; not yet self-assessed | 3. A wrong instruction here is executed by an agent in another repo and looks right until that repo fails, and the escalator for output consumed by another system sets 3 | 2027-03-15 | 2026-09-15 |
+| D-000 | **Assurance tier 3** — see T0 above. The catalogue asks a tier-2+ project for a phase-boundary trigger; this repo has no phases, so the row carries a date, which the decision check accepts at any tier | re-read the escalators | 2027-03-15 | 2026-09-15 |
 | D-001 | **The decision-trigger check has one implementation, in Node** — `BOOTSTRAP.md` Phase 2.10 makes it mandatory at every tier, so a project on any other stack writes its own | a POSIX sh and awk implementation with its own regression suite, since every project already runs sh hooks; meanwhile state the cost at Phase 2.10 and in the README | 2026-12-15 | 2026-09-15 |
 | D-002 | **No CI** — the checks have only ever run on macOS | one job running the pre-commit hook's checks on Linux and macOS, once the remote exists | 2026-10-15 | 2026-09-15 |
 | D-003 | **Nothing reads this table** | make the tracker path in `check-decisions.mjs` a parameter and run it from `.githooks/pre-commit` | 2026-12-15 | 2026-09-15 |
