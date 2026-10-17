@@ -12,9 +12,10 @@ This repo is not a normal project. It **describes** how projects are set up; it
 is not itself set up that way. Most of what the playbook installs judges a
 project's code — dependencies, tests, coverage, releases, incoming pull requests —
 and this repo has none of those to judge, so those gates would check nothing here.
-*Self-application* below lists the four things that do run. What is still
-missing — a CI run, which has never happened — is an open row in
-[TRACKER.md](TRACKER.md), not an unstated gap.
+*Self-application* below lists the four things that do run. What is still open —
+nothing yet runs the decision check on this repo's own tracker, and the catalogue
+entries tier 3 admits are not yet worked — is in [TRACKER.md](TRACKER.md), not an
+unstated gap.
 
 ## This repository's identity
 
@@ -110,7 +111,7 @@ about to become public:
 
    Not skippable, by anything. `scripts/check-safety.test.sh` and
    `scripts/check-push.test.sh` cover them. `--no-verify` skips both hooks, which
-   is what the CI layer backstops — and that layer has not yet run on GitHub
+   is what the CI layer backstops, and that layer has run green on GitHub
    (TRACKER.md, D-002). There is no bot allowlist, so a web-UI merge, whose
    committer is GitHub, would be refused until one is added.
 

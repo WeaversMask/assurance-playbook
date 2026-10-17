@@ -23,10 +23,10 @@
 #   * ASCII. Locale is pinned to C, so a task id is measured in bytes, not
 #     characters, and whitespace means space, tab and CR, not every Unicode space.
 #   * LF line endings. A tracker saved with CRLF is not specially handled by either.
-#   * It has run only on macOS's awk. It is written to the POSIX subset (no regex
-#     intervals, no gawk extensions), because mawk is the default awk on Debian and
-#     Ubuntu and is the likeliest place a portable awk program breaks. That is
-#     argued from the subset, not observed — see TRACKER.md, D-002.
+#   * It has run on BSD awk 20200816 (macOS), GNU Awk 5.2.1 and mawk 1.3.4, in CI on
+#     2026-10-17 (TRACKER.md, D-002); not on busybox awk. It is written to the POSIX
+#     subset (no regex intervals, no gawk extensions) because mawk, the default awk on
+#     a stock Debian or Ubuntu, is where a portable awk program breaks first.
 #
 # The tracker is `docs/IMPLEMENTATION.md`, resolved from this file's parent
 # directory, as in the original. Making that a parameter is TRACKER.md D-003.

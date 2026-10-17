@@ -4,11 +4,11 @@
 # RUNS SO FAR, 2026-10-17, on the private repository. First: ubuntu-latest and the history
 # job green, macOS red — every check passed there and then the skip step failed the run,
 # because eleven workflow cases needed PyYAML, which that runner's python3 lacks; they are
-# dependency-free now. Second: all green. The environment step then showed that the Ubuntu
-# runner's awk is GNU Awk 5.2.1, NOT mawk, which is what a stock Debian or Ubuntu has and
-# what a portable awk program is likeliest to break on — so the matrix has a third row that
-# installs mawk, makes it `awk`, and fails if it is not. D-002 closes on a run green on all
-# three.
+# dependency-free now. Second: all green, and the environment step showed the Ubuntu
+# runner's awk is GNU Awk 5.2.1, NOT mawk, which is what a stock Debian or Ubuntu has — so
+# the matrix gained a row that installs mawk, makes it `awk`, and fails if it is not.
+# Third: green on every job, with no skipped case: ubuntu (dash, GNU awk, sed, grep),
+# ubuntu with mawk 1.3.4, macOS arm64 (BSD awk, sed, grep), and the history check.
 #
 # SECURITY, in the order it matters: read-only token; no `pull_request_target`; every
 # action pinned to a full commit SHA (the pins are the ones in

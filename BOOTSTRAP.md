@@ -297,11 +297,10 @@ fresh install is the worst possible time to debug a misattributed error.
     in `reference/node-pnpm/test/gates.test.sh` runs against both. The tracker
     needs the `Trigger` column (`templates/IMPLEMENTATION.skeleton.md`).
 
-    Two limits of the portable one, stated rather than discovered: it measures
-    task ids in bytes, so it is ASCII-only, and it has run only on macOS's awk —
-    it is written to the POSIX subset, which is argued, not observed
-    (TRACKER.md, D-002). Where the tracker is not `docs/IMPLEMENTATION.md`, the
-    path is one line in each script.
+    Its limits, stated rather than discovered: it measures task ids in bytes, so
+    it is ASCII-only, and it has been run on BSD awk, GNU awk 5.2.1 and mawk
+    1.3.4 (CI, TRACKER.md D-002) but not on busybox awk. Where the tracker is not
+    `docs/IMPLEMENTATION.md`, the path is one line in each script.
 
 11. **Budget gates** (tier 3 only, and only where agent or model budget is
     actually being spent): each control that exists for *cost* rather than

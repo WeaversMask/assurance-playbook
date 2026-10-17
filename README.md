@@ -105,7 +105,7 @@ derives each gate's mechanism for your stack, so the tools are chosen per projec
 nothing installed: [`templates/check-decisions.sh`](templates/check-decisions.sh) is
 POSIX sh and awk, held to the same behaviour as the Node original in
 `reference/node-pnpm/` — every regression case runs against both. It is ASCII-only,
-and has run only on macOS's awk so far (D-002).
+and has been run on BSD awk, GNU awk and mawk in CI (D-002), though not on busybox awk.
 
 **To run this repository's own checks** — `sh scripts/run-checks.sh`, which
 needs no git configuration and commits nothing. Two checks run only when
@@ -121,7 +121,7 @@ and the comparison with the installed copy of the skill.
 | Python 3 | Python-2.0 | one docs-suite case |
 | gitleaks | MIT | optional for the checks above, required to commit or push here — the hooks scan staged changes and outgoing commits. `sh scripts/install-gitleaks.sh` installs a pinned, checksum-verified copy into `.bin/` |
 
-They have run on macOS, and on macOS with Ubuntu's `sh` (dash) standing in for `sh`. They have not run on Linux itself: [the workflow](.github/workflows/checks.yml) that will is written but has never run (D-002).
+They run in CI on every push ([the workflow](.github/workflows/checks.yml)): Ubuntu (dash, GNU awk, sed and grep), Ubuntu with mawk as `awk`, and macOS — green when last run, 2026-10-17 (D-002). Not tried: busybox and Alpine.
 
 ## Built with an earlier version
 

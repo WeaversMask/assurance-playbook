@@ -15,8 +15,9 @@
 #   * No project-specific opt-out variable.
 #
 # THE FOUR HASHES BELOW WERE COPIED from the exhibit, which took them from the
-# release's published checksums file. They were not re-fetched here: that is a
-# download, and the first CI run is the thing that exercises this path for real.
+# release's published checksums file. They were not re-fetched here. CI has since
+# exercised two of the four with real downloads — linux/x64 and darwin/arm64, on
+# 2026-10-17 — and the other two (darwin/x64, linux/arm64) have never been downloaded.
 # Bumping GITLEAKS_VERSION means refreshing all four.
 #
 # TEST SEAM: GITLEAKS_DOWNLOAD_BASE redirects WHERE the tarball comes from, never what

@@ -4,8 +4,8 @@
 #
 # WHAT THIS CANNOT COVER, said first. The installer's SUCCESS path needs the real
 # release tarball, whose SHA-256 is pinned in the script; the workflow cannot run
-# without GitHub. Both are exercised by the first CI run, and nothing here pretends
-# otherwise. What it can cover is the installer's FAILURE paths — which is where an
+# without GitHub. Both were exercised by CI on 2026-10-17 (TRACKER.md, D-002), and
+# nothing here pretends to be that. What it can cover is the installer's FAILURE paths — which is where an
 # installer that "worked" without installing anything would hide — over file://, so no
 # network is touched, and the workflow's security properties, which are static.
 #
