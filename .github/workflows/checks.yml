@@ -1,15 +1,11 @@
 # The checks, on the two systems a reader is likely to have, plus the CI layer of the
 # safety class (TRACKER.md, D-002 and D-005).
 #
-# THIS WORKFLOW HAS NEVER RUN. There is no remote yet. What was checked before it was
-# written: every suite passes with Ubuntu's `sh` (dash) standing in for `sh`; each `run:`
-# block below was extracted from this file and executed locally, in order, from a clone,
-# with the installer meeting an already-installed scanner so that nothing was downloaded;
-# and the two steps that decide pass or fail were run against a failing input. What was
-# NOT checked: the download itself, GNU sed/grep/awk, mawk (the default awk on Ubuntu),
-# the actions, and the runners. The first run is the first time any of those are met, so
-# expect findings; finding them is its job, and D-002 stays open until a run is green on
-# both systems.
+# FIRST RUN, 2026-10-17, on the private repository: ubuntu-latest green with no skipped
+# case, the history job green, and macOS red — every check on it passed, and then the skip
+# step below failed the run, because eleven of the suite's workflow cases needed PyYAML and
+# that runner's python3 has none. They are dependency-free now. The skip step did what it
+# is for. D-002 closes when a single run is green on both systems.
 #
 # SECURITY, in the order it matters: read-only token; no `pull_request_target`; every
 # action pinned to a full commit SHA (the pins are the ones in
@@ -53,6 +49,18 @@ jobs:
         run: |
           sh scripts/install-gitleaks.sh
           echo "$PWD/.bin" >> "$GITHUB_PATH"
+
+      - name: Environment (for the record)
+        run: |
+          echo "runner:   $(uname -sm)"
+          echo "sh:       $(ls -l /bin/sh | awk '{ print $NF }')"
+          echo "awk:      $( (awk --version || awk -W version) 2>&1 | head -1 )"
+          echo "sed:      $( (sed --version 2>/dev/null | head -1) | grep . || echo 'BSD sed (no --version)' )"
+          echo "grep:     $(grep --version 2>&1 | head -1)"
+          echo "git:      $(git --version)"
+          echo "node:     $(node --version)"
+          echo "python3:  $(python3 --version 2>&1)"
+          echo "gitleaks: $(gitleaks version)"
 
       - name: Run every check
         run: |

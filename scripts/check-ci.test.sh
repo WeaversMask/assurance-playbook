@@ -117,54 +117,63 @@ fi
 
 echo
 echo "checks.yml"
-# One python process parses the YAML once and prints a verdict per property; PyYAML
-# reads the key `on` as the boolean True, which the script accounts for.
-if python3 -c 'import yaml' >/dev/null 2>&1; then
-  # The checks live in a file of their own: macOS's `sh` is bash 3.2, which mis-parses
-  # the `${{ ... }}` this script has to quote when the heredoc is nested inside $( ).
-  cat > "$work/workflow-check.py" <<'PY'
-import re, sys, yaml
-doc = yaml.safe_load(open(sys.argv[1])); text = open(sys.argv[1]).read()
-def ok(name, cond): print(("ok    " if cond else "FAIL  ") + name)
-on = doc.get("on", doc.get(True)) or {}
-# `on` is a string, a list or a map; and only the PARSED triggers are tested, never the
-# raw text, because the workflow's own comments name the thing it forbids.
-if isinstance(on, str): on = {on: None}
-elif isinstance(on, list): on = dict.fromkeys(on)
-ok("the token is read-only: permissions is exactly contents: read", doc.get("permissions") == {"contents": "read"})
-ok("no job widens the token", all("permissions" not in j for j in doc["jobs"].values()))
-ok("it never triggers on pull_request_target", "pull_request_target" not in on)
-uses = re.findall(r"^\s*-?\s*uses:\s*(\S+)", text, re.M)
-ok("there are actions, and every one is pinned to a full commit SHA", bool(uses) and all(re.fullmatch(r"[^@\s]+@[0-9a-f]{40}", u) for u in uses))
-steps = [s for j in doc["jobs"].values() for s in j.get("steps", [])]
-ok("no step interpolates the event into a shell command", not any("${{ github.event" in (s.get("run") or "") or "${{ github.head_ref" in (s.get("run") or "") for s in steps))
-ok("no step persists credentials", all((s.get("with") or {}).get("persist-credentials") is False for s in steps if str(s.get("uses", "")).startswith("actions/checkout")))
-ok("it runs on both Linux and macOS", {"ubuntu-latest", "macos-latest"} <= set(doc["jobs"]["checks"]["strategy"]["matrix"]["os"]))
-ok("a skipped case fails the run", any("SKIPPED" in (s.get("run") or "") and "exit 1" in (s.get("run") or "") for s in doc["jobs"]["checks"]["steps"]))
-ok("gitleaks is installed by the pinned installer, in both jobs", all(any("scripts/install-gitleaks.sh" in (s.get("run") or "") for s in j["steps"]) for j in doc["jobs"].values()))
-ok("the history job reads the whole history", any((s.get("with") or {}).get("fetch-depth") == 0 for s in doc["jobs"]["history"]["steps"]))
-ok("the history job does not run on pull requests", "pull_request" in str(doc["jobs"]["history"].get("if")))
-PY
-  # The checker crashed once on a workflow with an empty `with:` block — its traceback went
-  # to stderr, the lines already printed counted as passes, and the suite reported success
-  # with FEWER cases than it should have run. So: a crash is a failure, and so is any
-  # number of verdicts other than the eleven the script prints.
-  if results="$(python3 "$work/workflow-check.py" "$workflow" 2>&1)"; then :; else
-    fail=$((fail + 1)); printf '  FAIL  the workflow checker crashed\n'; printf '%s\n' "$results" | tail -3 | sed 's/^/          /'
-  fi
-  printf '%s\n' "$results"
-  verdicts=$(printf '%s\n' "$results" | grep -cE '^(ok|FAIL) ' || true)
-  if [ "$verdicts" != 11 ]; then
-    fail=$((fail + 1)); printf '  FAIL  expected 11 workflow verdicts, got %s — a check that examined less must not read as clean\n' "$verdicts"
-  fi
-  # `grep -c` exits 1 when the count is 0, and `set -e` then kills the suite inside the
-  # assignment with no summary line — the run with ZERO failures died and the run with one
-  # printed. The third suite on this branch to be killed by exactly this.
-  p=$(printf '%s\n' "$results" | grep -c '^ok' || true); f=$(printf '%s\n' "$results" | grep -c '^FAIL' || true)
-  pass=$((pass + p)); fail=$((fail + f))
-else
-  skipped=$((skipped + 11)); printf '  SKIP  workflow cases — PyYAML not found (probe: python3 -c "import yaml", %s)\n' "$(date +%Y-%m-%d)"
-fi
+# DEPENDENCY-FREE ON PURPOSE. The first version parsed the YAML with PyYAML. The first CI
+# run skipped all eleven of those cases on the macOS runner, whose python3 has no yaml
+# module — and the workflow's own skip guard failed the run, correctly. A suite for the CI
+# pieces cannot depend on something the CI runner may lack, so this reads the file with
+# grep and awk alone (no regex intervals in awk: mawk is Ubuntu's default).
+#
+# COMMENTS ARE STRIPPED FIRST, so prose that names a forbidden thing cannot trip a check
+# and prose that names a required thing cannot satisfy one. Everything below reads CODE.
+code="$work/workflow.code"
+grep -vE '^[[:space:]]*#' "$workflow" > "$code" || true
+
+# A top-level key's block: its lines, up to the next line that starts in column 0.
+top() { awk -v key="$1" '$0 ~ "^" key ":" { inside = 1; next } inside && /^[^ \t]/ { inside = 0 } inside { print }' "$code"; }
+# A job's lines: from its key (indented two spaces under `jobs:`) to the next job key.
+job() {
+  awk -v name="$1" '
+    /^jobs:/ { injobs = 1; next }
+    injobs && /^[^ \t]/ { injobs = 0 }
+    injobs && /^  [A-Za-z0-9_-]+:[ \t]*$/ { cur = $0; sub(/^  /, "", cur); sub(/:[ \t]*$/, "", cur); inside = (cur == name); next }
+    injobs && inside { print }
+  ' "$code"
+}
+yes_if() { if "$@"; then echo yes; else echo no; fi; }
+
+perm="$(top permissions)"
+flag "the token is read-only: permissions is exactly contents: read" \
+  "$(yes_if sh -c '[ "$(printf "%s\n" "$1" | grep -c . || true)" = 1 ] && printf "%s\n" "$1" | grep -qx "  contents: read"' _ "$perm")"
+flag "no job widens the token" "$(yes_if sh -c '! grep -qE "^[[:space:]]+permissions:" "$1"' _ "$code")"
+flag "it never triggers on pull_request_target" "$(yes_if sh -c '! grep -q pull_request_target "$1"' _ "$code")"
+
+uses="$(grep -E '^[[:space:]-]*uses:' "$code" || true)"
+unpinned="$(printf '%s\n' "$uses" | grep -vE '@[0-9a-f]{40}([[:space:]]|$)' | grep . || true)"
+flag "there are actions, and every one is pinned to a full commit SHA" \
+  "$(yes_if sh -c '[ -n "$1" ] && [ -z "$2" ]' _ "$uses" "$unpinned")"
+
+flag "no step interpolates the event into a shell command" \
+  "$(yes_if sh -c '! grep -qE "[$][{][{][[:space:]]*github[.](event|head_ref)" "$1"' _ "$code")"
+
+nco="$(grep -c 'actions/checkout@' "$code" || true)"; npc="$(grep -c 'persist-credentials: false' "$code" || true)"
+flag "no step persists credentials" "$(yes_if sh -c '[ "$1" -gt 0 ] && [ "$1" = "$2" ]' _ "$nco" "$npc")"
+
+osline="$(grep -E '^[[:space:]]*os:[[:space:]]*\[' "$code" | head -1 || true)"
+case "$osline" in
+  *ubuntu-latest*macos-latest*|*macos-latest*ubuntu-latest*) both=yes ;;
+  *) both=no ;;
+esac
+flag "it runs on both Linux and macOS" "$both"
+
+jc="$(job checks)"; jh="$(job history)"
+flag "a skipped case fails the run" \
+  "$(yes_if sh -c 'printf "%s\n" "$1" | awk "/grep -q SKIPPED/ { s = NR } s && NR - s <= 8 && /exit 1/ { ok = 1 } END { exit !ok }"' _ "$jc")"
+flag "gitleaks is installed by the pinned installer, in both jobs" \
+  "$(yes_if sh -c 'printf "%s\n" "$1" | grep -q "scripts/install-gitleaks.sh" && printf "%s\n" "$2" | grep -q "scripts/install-gitleaks.sh"' _ "$jc" "$jh")"
+flag "the history job reads the whole history" \
+  "$(yes_if sh -c 'printf "%s\n" "$1" | grep -qE "fetch-depth:[[:space:]]*0"' _ "$jh")"
+flag "the history job does not run on pull requests" \
+  "$(yes_if sh -c 'printf "%s\n" "$1" | grep -E "^[[:space:]]*if:" | grep -q pull_request' _ "$jh")"
 
 echo
 if [ "$fail" -gt 0 ]; then printf '❌ ci: %s passed, %s FAILED\n' "$pass" "$fail"; exit 1; fi
