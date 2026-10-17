@@ -41,7 +41,14 @@ fail=0
 # fixture with `git checkout --`: it reverts to the committed state and silently
 # destroys uncommitted work in the same file, which it has already done twice
 # here mid-verification.
-( cd "$root" && tar --exclude=.git --exclude=.DS_Store -cf - . ) | ( mkdir -p "$work/pristine" && cd "$work/pristine" && tar -xf - )
+#
+# THE MAINTAINER'S PATTERNS FILE IS NEVER COPIED. `tar` takes the working
+# directory, not the committed tree, so it also takes git-ignored files — and
+# once `.gitleaks.local.toml` exists at the root, every run of this suite would
+# have duplicated the maintainer's personal identifiers into a temp directory.
+# Private and removed on exit, but a copy that survives a killed run is a copy of
+# exactly what that file exists to keep out of reach. Nothing here reads it.
+( cd "$root" && tar --exclude=.git --exclude=.DS_Store --exclude=.gitleaks.local.toml -cf - . ) | ( mkdir -p "$work/pristine" && cd "$work/pristine" && tar -xf - )
 
 tree="$work/tree"
 reset_tree() { rm -rf "$tree"; cp -R "$work/pristine" "$tree"; }
@@ -96,6 +103,15 @@ expect_clean() {
 }
 
 echo "check-docs.mjs"
+
+# On a machine without the file this is vacuous; on the maintainer's it is the
+# whole point. Mutation-tested against a scratch tree holding a DUMMY file of that
+# name — removing the exclusion above turns this red.
+if [ -e "$work/pristine/.gitleaks.local.toml" ]; then
+  fail=$((fail + 1)); printf '  FAIL  %s\n' "the maintainer's patterns file was copied into a fixture"
+else
+  pass=$((pass + 1)); printf '  ok    %s\n' "the maintainer's patterns file is not copied into a fixture"
+fi
 
 # ── The baseline. If this is not clean, nothing below means anything. ────────
 reset_tree
